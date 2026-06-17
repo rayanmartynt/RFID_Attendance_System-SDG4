@@ -32,7 +32,7 @@ while True:
         # Card not registered
         if uid not in df["RFID_UID"].values:
             print("Unknow RFID Card")
-            arduino.write(b"NOTFOUND\N")
+            arduino.write(b"NOTFOUND\n")
             continue
 
         # Get student record
