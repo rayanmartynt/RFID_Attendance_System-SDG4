@@ -17,13 +17,8 @@ except:
     exit()
 
 print("RFID Attendance System Started")
+CURRENT_WEEK = input("Enter Current Week Number (Week 1- Week 15): ")
 while True:
-    try:
-        CURRENT_WEEK = int(input("Enter Current Week Number (1-15): "))
-        print("Enter a valid week number")
-    except ValueError:
-        print("Week number must be an integer")
-
     try:
         uid = arduino.readline().decode().strip().upper()
 
@@ -44,7 +39,7 @@ while True:
         student = df[df["RFID_UID"] == uid]
 
         name = student["Name"].values[0]
-        attendance = int(student["Attendance"].values[0])
+        attendance = student[CURRENT_WEEK].values[0]
 
         # Already present
         if attendance == 1:
