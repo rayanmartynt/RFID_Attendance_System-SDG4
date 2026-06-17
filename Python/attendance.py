@@ -17,8 +17,13 @@ except:
     exit()
 
 print("RFID Attendance System Started")
-
 while True:
+    try:
+        CURRENT_WEEK = int(input("Enter Current Week Number (1-15): "))
+        print("Enter a valid week number")
+    except ValueError:
+        print("Week number must be an integer")
+
     try:
         uid = arduino.readline().decode().strip().upper()
 
@@ -48,7 +53,7 @@ while True:
         else:
             df.loc[
                 df["RFID_UID"] == uid,
-                "Attendance"
+                CURRENT_WEEK
             ] = 1
 
             df.to_excel("Attendance.xlsx", index = False)
