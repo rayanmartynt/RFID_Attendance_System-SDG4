@@ -142,7 +142,7 @@ pip install pyserial pandas openpyxl
 
 ## 7. Database Structure (Excel)
 
-The system relies on a single Excel workbook (`Attendance_Records.xlsx`) structured as follows:
+The system relies on a single Excel workbook (`Attendance.xlsx`) structured as follows:
 
 | Column Name | Data Type | Description |
 | :--- | :--- | :--- |
