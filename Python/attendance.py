@@ -17,7 +17,18 @@ except:
     exit()
 
 print("RFID Attendance System Started")
-CURRENT_WEEK = input("Enter Current Week Number (Week 1- Week 15): ")
+while True:
+    try:
+        current_week = int(input("Enter Current week (1-12):"))
+        if 1 <= current_week <= 12:
+            break
+        else:
+            print("Week number must be between 1 and 12")
+    except ValueError:
+        print("Please enter a valid integer.")
+CURRENT_WEEK = f"Week {current_week}"
+print(f"Recording attendance for {CURRENT_WEEK}")
+
 while True:
     try:
         uid = arduino.readline().decode().strip().upper()
