@@ -138,3 +138,77 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install required packages
 pip install pyserial pandas openpyxl
+
+## 7. Database Structure (Excel)
+
+The system relies on a single Excel workbook (`Attendance_Records.xlsx`) structured as follows:
+
+| Column Name | Data Type | Description |
+| :--- | :--- | :--- |
+| RFID_UID | String | Unique 8-character Hex ID (e.g., `63A1B2C4`) |
+| Student_ID | String | Institutional enrollment number |
+| Name | String | Student's full name |
+| Week1 – Week12 | Integer (0/1) | Binary attendance per week |
+| Total_Present | Integer | Calculated sum of Weeks 1–12 |
+| Attendance_% | Float | (Total_Present / 12) * 100 |
+
+## 8. Logic & Mathematical Calculations
+
+The system employs standard binary logic for attendance states:
+
+- **1** = Present (Attended)
+- **0** = Absent (Did not attend)
+
+**Attendance Percentage Formula**:
+$$ \text{Attendance Percentage} = \left( \frac{\text{Total Weeks Present}}{12} \right) \times 100 $$
+
+*Example*: If a student is present for **9 out of 12 weeks**:
+$$ \left( \frac{9}{12} \right) \times 100 = 75.00\% $$
+
+---
+
+## 9. User Feedback Matrix
+
+The system provides immediate multimodal feedback for every scan:
+
+| Status | Green LED (D2) | Red LED 1 (D3) | Red LED 2 (D4) | Buzzer (D5) | LCD Message |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| **Attendance Marked** | ON | OFF | OFF | Short Beep (100ms) | `WELCOME [NAME]` <br> `ATTENDANCE SAVED` |
+| **Unknown Card** | OFF | ON | OFF | 2 Short Beeps | `UNKNOWN CARD` <br> `ACCESS DENIED` |
+| **Duplicate Scan** | OFF | OFF | ON | Long Beep (500ms) | `ALREADY PRESENT` <br> `WEEK RECORDED` |
+
+
+## 10. Usage Guide
+
+1. **Initialize**: Launch the Python script (`attendance.py`) to start serial monitoring.
+2. **Select Week**: When prompted in the terminal, enter the current academic week (1–12).
+3. **Scan Cards**: Instruct students to tap their RFID cards sequentially.
+4. **Monitor Feedback**: Observe the LCD and terminal logs for real-time status.
+5. **Review Data**: Open `Attendance_Records.xlsx` to view updated attendance logs.
+6. **End Session**: Press `Ctrl+C` in the terminal to gracefully shut down the serial connection.
+
+
+## 11. Troubleshooting & Common Issues
+
+| Issue | Likely Cause | Solution |
+| :--- | :--- | :--- |
+| **RFID reader not detecting cards** | Loose connections or insufficient power. | Check SPI wiring. Use external 5V supply instead of USB. |
+| **Serial port not found** | Incorrect COM port or driver issues. | Update Arduino drivers. Verify port name in Python script. |
+| **Excel file not updating** | File is open in Excel (write-lock). | Close the Excel file before running the script. |
+| **Buzzer interfering with RFID** | Buzzer uses D12 (conflicts with SPI MISO). | **Fixed** – use D5 as per the updated schematic above. |
+| **Duplicate entries recorded** | Logic misalignment in week selection. | Ensure the Python script correctly parses the current week variable. |
+
+
+## 12. Future Enhancements
+
+- **GUI Dashboard**: Develop a Tkinter/PyQt interface for non-technical users.
+- **Database Migration**: Transition from Excel to SQLite/MySQL for robust multi-user access.
+- **Wi-Fi/Cloud Sync**: Add an ESP8266 module to push attendance data to Google Sheets or Firebase.
+- **Biometric Fallback**: Integrate a fingerprint scanner as a secondary authentication method.
+- **Automated Reports**: Generate PDF attendance reports and email them directly to faculty.
+
+
+## 13. Author
+
+**Rayan Martin Turay**  
+[GitHub](https://github.com/rayanmartynt)
