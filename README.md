@@ -91,7 +91,7 @@ The system operates on a sequential logic loop:
 
 ---
 
-## 5. Hardware Schematics & Pin Mapping
+## 5. Hardware Schematics, Pin Mapping, & Diagram
 
 > **⚠️ Correction Notice**: The buzzer has been moved from **D12** (conflicts with MISO) to **D5** for functional integrity.
 
@@ -117,7 +117,9 @@ The system operates on a sequential logic loop:
 | LCD E | D6 | Enable |
 | LCD D4 – D7 | D5, D8, A0, A1 | Data buses (4-bit mode) |
 
----
+<img width="3000" height="2306" alt="Design" src="https://github.com/user-attachments/assets/21e58f9f-9426-4a25-ae05-028c0a1dfb23" />
+
+
 
 ## 6. Software Installation & Setup
 
