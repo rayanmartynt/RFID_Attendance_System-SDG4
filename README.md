@@ -14,7 +14,7 @@
 - [4. Technology Stack](#4-technology-stack)
   - [Hardware Components](#hardware-components)
   - [Software Dependencies](#software-dependencies)
-- [5. Hardware Schematics & Pin Mapping](#5-hardware-schematics--pin-mapping)
+- [5. Hardware Schematics, Pin Mapping, Diagram & Simulation](#5-hardware-schematics--pin-mapping--diagram--simulation)
 - [6. Software Installation & Setup](#6-software-installation--setup)
   - [Arduino IDE Configuration](#arduino-ide-configuration)
   - [Python Environment Setup](#python-environment-setup)
@@ -91,7 +91,7 @@ The system operates on a sequential logic loop:
 
 ---
 
-## 5. Hardware Schematics, Pin Mapping, & Diagram
+## 5. Hardware Schematics, Pin Mapping, Diagram & Simulation
 
 > **⚠️ Correction Notice**: The buzzer has been moved from **D12** (conflicts with MISO) to **D5** for functional integrity.
 
@@ -117,7 +117,13 @@ The system operates on a sequential logic loop:
 | LCD E | D6 | Enable |
 | LCD D4 – D7 | D5, D8, A0, A1 | Data buses (4-bit mode) |
 
+### Diagram
 <img width="3000" height="2306" alt="Design" src="https://github.com/user-attachments/assets/21e58f9f-9426-4a25-ae05-028c0a1dfb23" />
+
+### Simulation
+https://github.com/user-attachments/assets/50ee161b-aff6-4718-b13f-4257404325e6
+
+
 
 
 
@@ -168,7 +174,6 @@ $$ \text{Attendance Percentage} = \left( \frac{\text{Total Weeks Present}}{12} \
 *Example*: If a student is present for **9 out of 12 weeks**:
 $$ \left( \frac{9}{12} \right) \times 100 = 75.00\% $$
 
----
 
 ## 9. User Feedback Matrix
 
