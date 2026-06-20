@@ -19,13 +19,12 @@
   - [Arduino IDE Configuration](#arduino-ide-configuration)
   - [Python Environment Setup](#python-environment-setup)
 - [7. Database Structure (Excel)](#7-database-structure-excel)
-- [8. Logic & Mathematical Calculations](#8-logic--mathematical-calculations)
-- [9. User Feedback Matrix](#9-user-feedback-matrix)
-- [10. Usage Guide](#10-usage-guide)
-- [11. Troubleshooting & Common Issues](#11-troubleshooting--common-issues)
-- [12. Future Enhancements](#12-future-enhancements)
-- [13. Author](#13-author)
-- [14. License](#14-license)
+- [8. User Feedback Matrix](#9-user-feedback-matrix)
+- [9. Usage Guide](#10-usage-guide)
+- [10. Troubleshooting & Common Issues](#11-troubleshooting--common-issues)
+- [11. Future Enhancements](#12-future-enhancements)
+- [12. Author](#13-author)
+- [13. License](#14-license)
 
 ---
 
@@ -123,9 +122,7 @@ The system operates on a sequential logic loop:
 ### Simulation
 https://github.com/user-attachments/assets/50ee161b-aff6-4718-b13f-4257404325e6
 
-
-
-
+---
 
 ## 6. Software Installation & Setup
 
@@ -160,19 +157,6 @@ The system relies on a single Excel workbook (`Attendance.xlsx`) structured as f
 | Week1 – Week12 | Integer (0/1) | Binary attendance per week |
 | Total_Present | Integer | Calculated sum of Weeks 1–12 |
 | Attendance_% | Float | (Total_Present / 12) * 100 |
-
-## 8. Logic & Mathematical Calculations
-
-The system employs standard binary logic for attendance states:
-
-- **1** = Present (Attended)
-- **0** = Absent (Did not attend)
-
-**Attendance Percentage Formula**:
-$$ \text{Attendance Percentage} = \left( \frac{\text{Total Weeks Present}}{12} \right) \times 100 $$
-
-*Example*: If a student is present for **9 out of 12 weeks**:
-$$ \left( \frac{9}{12} \right) \times 100 = 75.00\% $$
 
 
 ## 9. User Feedback Matrix
