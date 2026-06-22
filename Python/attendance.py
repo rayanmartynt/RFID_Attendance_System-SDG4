@@ -20,7 +20,6 @@ def connect_arduino():
 
 # Function 2: Allows lecturer to enter the weeek he/she wants to enter attendace for
 def select_week():
-
     while True:
         try:
             current_week = int(input("Enter Current week (1-12):"))
@@ -43,7 +42,7 @@ def find_student(df, uid):
         return None
     return student
 
-# Function 5: Saves the student attendace
+# Function 5: Saves the student attendance
 def save_attendance(df):
     df.to_excel(
         FILE,
@@ -83,7 +82,7 @@ def process_card(arduino, uid, current_week):
         return
     student_name = (student["Name"].values[0])
 
-    attendance_status = (student["Attendance"].values[0])
+    attendance_status = (student[current_week].values[0])
     if attendance_status == 1:
         send_duplicate_message(arduino, student_name)
     else:
@@ -104,7 +103,6 @@ def main():
         uid = (arduino.readline().decode().strip().upper())
 
         if uid == "":
-            print("Scan your card...")
             continue
         print(f"Scanned UID: {uid}")
         process_card(arduino, uid, current_week)
