@@ -154,9 +154,10 @@ The system relies on a single Excel workbook (`Attendance.xlsx`) structured as f
 | RFID_UID | String | Unique 8-character Hex ID (e.g., `63A1B2C4`) |
 | Student_ID | String | Institutional enrollment number |
 | Name | String | Student's full name |
-| Week1 – Week12 | Integer (0/1) | Binary attendance per week |
-| Total_Present | Integer | Calculated sum of Weeks 1–12 |
-| Attendance_% | Float | (Total_Present / 12) * 100 |
+| Week1_Arrival – Week12_Arrival | String | Student's arrival time |
+| Week1_Departure – Week12_Departure | String | Student's departure time |
+| Week1_Status – Week12_Status | String | Student attendance status (Present, Late, Left-early, Absent) |
+
 
 
 ## 9. User Feedback Matrix
