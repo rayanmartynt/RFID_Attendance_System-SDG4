@@ -176,7 +176,7 @@ The system provides immediate multimodal feedback for every scan:
 2. **Select Week**: When prompted in the terminal, enter the current academic week (1–12).
 3. **Scan Cards**: Instruct students to tap their RFID cards sequentially.
 4. **Monitor Feedback**: Observe the LCD and terminal logs for real-time status.
-5. **Review Data**: Open `Attendance_Records.xlsx` to view updated attendance logs.
+5. **Review Data**: Open `Attendance.xlsx` to view updated attendance logs.
 6. **End Session**: Press `Ctrl+C` in the terminal to gracefully shut down the serial connection.
 
 
