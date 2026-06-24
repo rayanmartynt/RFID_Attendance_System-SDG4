@@ -31,11 +31,14 @@ def load_attendance_database():
 
         arrival_col = f"Week{week}_Arrival"
         departure_col = f"Week{week}_Departure"
+        status_col = f"Week{week}_Status"
 
         if arrival_col in df.columns:
             df[arrival_col] = df[arrival_col].astype("object")
         if departure_col in df.columns:
             df[departure_col] = df[departure_col].astype("object")
+        if status_col in df.columns:
+            df[status_col] = df[status_col].astype("object")
 
     return df
 
