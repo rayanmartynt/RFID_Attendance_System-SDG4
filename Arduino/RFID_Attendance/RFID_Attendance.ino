@@ -12,7 +12,7 @@
 // LEDs
 #define GREEN_LED 2
 #define RED_LED1 3
-#define RED_LED2 4
+#define BLUE_LED 4
 
 // LCD Pins
 LiquidCrystal lcd(7, 6, 5, 8, A0, A1);
@@ -30,7 +30,7 @@ void setup()
 
   pinMode(GREEN_LED, OUTPUT);
   pinMode(RED_LED1, OUTPUT);
-  pinMode(RED_LED2, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
 
   lcd.begin(16, 2);
 
@@ -73,6 +73,17 @@ void loop()
   lcd.setCursor(0, 0);
   lcd.print("PROCESSING...");
 
+  tone(BUZZER, 2000);
+  delay(200);
+  noTone(BUZZER);
+
+  digitalWrite(BLUE_LED, HIGH);
+  delay(2000);
+
+
+  digitalWrite(BLUE_LED, LOW);
+
+
   unsigned long startTime = millis();
 
   while (millis() - startTime < 5000)
@@ -108,7 +119,7 @@ void loop()
       {
         String name = response.substring(10);
 
-        digitalWrite(RED_LED2, HIGH);
+        digitalWrite(BLUE_LED, HIGH);
 
         tone(BUZZER, 500);
         delay(800);
@@ -123,7 +134,7 @@ void loop()
 
         delay(2000);
 
-        digitalWrite(RED_LED2, LOW);
+        digitalWrite(BLUE_LED, LOW);
       }
 
       else if (response == "NOTFOUND")
