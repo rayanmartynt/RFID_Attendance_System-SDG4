@@ -39,6 +39,7 @@ def load_attendance_database():
             df[departure_col] = df[departure_col].astype("object")
         if status_col in df.columns:
             df[status_col] = df[status_col].astype("object")
+
     return df
 
 # Function 3: Saves the student attendance in the Excel
