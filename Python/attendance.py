@@ -26,7 +26,18 @@ def connect_arduino():
 
 # Function 2: Load the attendance database
 def load_attendance_database():
-    return pd.read_excel(FILE, engine="openpyxl")
+    df = pd.read_excel(FILE)
+    for week in range(1, 13):
+
+        arrival_col = f"Week{week}_Arrival"
+        departure_col = f"Week{week}_Departure"
+
+        if arrival_col in df.columns:
+            df[arrival_col] = df[arrival_col].astype("object")
+        if departure_col in df.columns:
+            df[departure_col] = df[departure_col].astype("object")
+
+    return df
 
 # Function 3: Saves the student attendance in the Excel
 def save_attendance_database(df):
