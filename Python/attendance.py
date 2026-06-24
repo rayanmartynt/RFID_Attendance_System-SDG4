@@ -128,7 +128,7 @@ def process_card(arduino, uid, current_week, current_session):
 
     send_message(arduino,"DUPLICATE")
 
-    print(f"{student_name} Already Check-in")
+    print(f"{student_name} Already Checked-in")
 
 # Function 11: The main function of this project
 def main():
