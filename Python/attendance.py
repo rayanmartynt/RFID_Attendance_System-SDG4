@@ -75,6 +75,7 @@ def process_card(arduino, uid, current_week, current_session):
         return
     row_index = student.index[0]
     student_name = df.loc[row_index, "Name"]
+    student_ID = df.loc[row_index, "Student_ID"]
     arrival_col = f"Week{current_week}_Arrival"
     departure_col = f"Week{current_week}_Departure"
     status_col = f"Week{current_week}_Status"
@@ -141,7 +142,7 @@ def process_card(arduino, uid, current_week, current_session):
         return
 
     send_message(arduino,"DUPLICATE")
-
+    print(f"Student ID: {student_ID}")
     print(f"{student_name} Already Checked-in")
 
 # Function 11: The main function of this project
