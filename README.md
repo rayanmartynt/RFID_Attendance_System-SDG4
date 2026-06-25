@@ -109,7 +109,7 @@ The system operates on a sequential logic loop:
 | Component | Arduino Pin | Description |
 | :--- | :--- | :--- |
 | Green LED | D2 | Success indicator |
-| Red LED (Unknown Card) | D3 | Unauthorized access |
+| Red LED (Unknown Card) | A2 | Unauthorized access |
 | Red LED (Duplicate) | D4 | Already scanned this week |
 | Buzzer | D5 | *Updated from D12 to avoid SPI conflict* |
 | LCD RS | D7 | Register Select |
