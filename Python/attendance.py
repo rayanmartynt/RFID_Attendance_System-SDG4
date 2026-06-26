@@ -73,8 +73,12 @@ def process_card(arduino, uid, current_week, current_session):
         print("Unknown Card")
         send_message(arduino,"NOTFOUND")
         return
+
     row_index = student.index[0]
+
     student_name = df.loc[row_index, "Name"]
+    student_ID = df.loc[row_index, "Student_ID"]
+
     arrival_col = f"Week{current_week}_Arrival"
     departure_col = f"Week{current_week}_Departure"
     status_col = f"Week{current_week}_Status"
@@ -82,67 +86,61 @@ def process_card(arduino, uid, current_week, current_session):
     now = datetime.now()
 
     arrival = df.loc[row_index, arrival_col]
-
     departure = df.loc[row_index, departure_col]
 
-    session_start, session_end = get_session_times(current_session)
-
-    session_start = now.replace(
-        hour=session_start.hour,
-        minute=session_start.minute,
-        second=0,
-        microsecond=0
-    )
-
-    session_end = now.replace(
-        hour=session_end.hour,
-        minute=session_end.minute,
-        second=0,
-        microsecond=0
-    )
+    # session_start, session_end = get_session_times(current_session)
+    # session_start = now.replace(
+    #     hour=session_start.hour,
+    #     minute=session_start.minute,
+    #     second=0,
+    #     microsecond=0
+    # )
+    #
+    # session_end = now.replace(
+    #     hour=session_end.hour,
+    #     minute=session_end.minute,
+    #     second=0,
+    #     microsecond=0
+    # )
 
     # First Scan: Check-in
-    if pd.isna(arrival):
+    if pd.isna(arrival) or arrival == "":
         arrival_time = now.strftime("%H:%M:%S")
         df.loc[row_index, arrival_col] = arrival_time
 
-        # If a student is 30mins late it will record "Late"
-        late_limit = session_start + timedelta(minutes=30)
-
-        if now <= late_limit:
-            status = "Present"
-            send_message(arduino,f"PRESENT:{student_name}")
-            print(f"{student_name} Present")
-        else:
-            status = "Late"
-            send_message(arduino,f"LATE:{student_name}")
-            print(f"{student_name} Late")
-
-        df.loc[row_index, status_col] = status
+        # Binary attendance
+        df.loc[row_index, status_col] = 1
 
         save_attendance_database(df)
+
+        send_message(arduino, f"PRESENT:{student_name}")
+
+        print(f"\nStudent ID: {student_ID}")
+        print(f"Name: {student_name}")
+        print("Attendance Recorded")
+        print("Status: 1")
         return
 
     # Second Scan: Check-out
-    if pd.isna(departure):
+    if pd.isna(departure) or departure == "":
         departure_time = now.strftime("%H:%M:%S")
         df.loc[row_index, departure_col] = departure_time
-
-        status = df.loc[row_index,status_col]
-        if now < session_end:
-            status += " - Left Early"
-
-        df.loc[row_index, status_col] = status
 
         save_attendance_database(df)
 
         send_message(arduino,f"CHECKOUT:{student_name}")
+
         print(f"{student_name} Checked Out")
+        print(f"Student ID: {student_ID}")
+        print(f"Name: {student_name}")
+        print(f"Departure Time: {departure_time}")
         return
 
+    # Third Scan: Duplicate
     send_message(arduino,"DUPLICATE")
 
-    print(f"{student_name} Already Checked-in")
+    print(f"Student ID: {student_ID}")
+    print(f"{student_name} Already Checked-in and Checked-out")
 
 # Function 11: The main function of this project
 def main():
@@ -160,6 +158,7 @@ def main():
         print("Invalid Session")
         return
     arduino = connect_arduino()
+    print("\nSystem Ready...")
 
     while True:
         if arduino.in_waiting:
@@ -169,6 +168,6 @@ def main():
                 # Call the process card function
                 process_card(arduino, uid, current_week, current_session)
 
-# Calling the main function
+# Start Program
 if __name__ == "__main__":
     main()

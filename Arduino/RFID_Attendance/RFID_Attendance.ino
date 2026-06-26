@@ -77,12 +77,6 @@ void loop()
   delay(200);
   noTone(BUZZER);
 
-  digitalWrite(BLUE_LED, HIGH);
-  delay(2000);
-
-
-  digitalWrite(BLUE_LED, LOW);
-
 
   unsigned long startTime = millis();
 
@@ -90,12 +84,15 @@ void loop()
   {
     if (Serial.available())
     {
-      String response = Serial.readStringUntil('\n');
-      response.trim();
+      String message = Serial.readStringUntil('\n');
+      message.trim();
 
-      if (response.startsWith("SUCCESS:"))
+      Serial.print("Received: ");
+      Serial.println(message);
+
+      if (message.startsWith("PRESENT:"))
       {
-        String name = response.substring(8);
+        String name = message.substring(8);
 
         digitalWrite(GREEN_LED, HIGH);
 
@@ -115,10 +112,30 @@ void loop()
         digitalWrite(GREEN_LED, LOW);
       }
 
-      else if (response.startsWith("DUPLICATE:"))
+      else if (message.startsWith("CHECKOUT:"))
       {
-        String name = response.substring(10);
+        String name = message.substring(9);
 
+        digitalWrite(GREEN_LED, HIGH);
+
+        tone(BUZZER, 1200);
+        delay(200);
+        noTone(BUZZER);
+
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("GOODBYE");
+
+        lcd.setCursor(0, 1);
+        lcd.print(name);
+
+        delay(3000);
+
+        digitalWrite(GREEN_LED, LOW);
+      }
+
+      else if (message == "DUPLICATE")
+      {
         digitalWrite(BLUE_LED, HIGH);
 
         tone(BUZZER, 500);
@@ -130,14 +147,14 @@ void loop()
         lcd.print("ALREADY");
 
         lcd.setCursor(0, 1);
-        lcd.print("PRESENT");
+        lcd.print("RECORDED");
 
-        delay(2000);
+        delay(3000);
 
         digitalWrite(BLUE_LED, LOW);
       }
 
-      else if (response == "NOTFOUND")
+      else if (message == "NOTFOUND")
       {
         digitalWrite(RED_LED1, HIGH);
 
@@ -158,7 +175,7 @@ void loop()
         lcd.setCursor(0, 1);
         lcd.print("CARD");
 
-        delay(2000);
+        delay(3000);
 
         digitalWrite(RED_LED1, LOW);
       }
@@ -170,6 +187,9 @@ void loop()
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("SCAN CARD");
+
+  lcd.setCursor(0, 1);
+  lcd.print("READY");
 
   rfid.PICC_HaltA();
 }
