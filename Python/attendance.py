@@ -1,7 +1,7 @@
 import serial
 import pandas as pd
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Arduino setup
 PORT = "COM3"      # Change if needed
@@ -64,7 +64,7 @@ def get_session_times(session):
     return start_time, end_time
 
 # Function 7: Process card step by step
-def process_card(arduino, uid, current_week, current_session):
+def process_card(arduino, uid, current_week):
     df = load_attendance_database()
     student = find_student(df, uid)
 
@@ -160,13 +160,21 @@ def main():
     arduino = connect_arduino()
     print("\nSystem Ready...")
 
-    while True:
-        if arduino.in_waiting:
-            uid = (arduino.readline().decode().strip())
-            if uid:
-                print(f"\nScanned UID: {uid}")
-                # Call the process card function
-                process_card(arduino, uid, current_week, current_session)
+    try:
+        while True:
+            if arduino.in_waiting:
+                uid = (arduino.readline().decode().strip())
+                if uid:
+                    print(f"\nScanned UID: {uid}")
+                    # Call the process card function
+                    process_card(arduino, uid, current_week)
+    except KeyboardInterrupt:
+        print("\nSystem Stopped Successfully")
+    finally:
+        if arduino.is_open:
+            arduino.close()
+
+        print("Arduino Connection Closed")
 
 # Start Program
 if __name__ == "__main__":
