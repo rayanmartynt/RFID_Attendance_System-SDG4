@@ -84,11 +84,8 @@ void loop()
   {
     if (Serial.available())
     {
-      String message = Serial.readStringUntil('\n');
+      String message = Serial.readStringUntil('\r');
       message.trim();
-
-      Serial.print("Received: ");
-      Serial.println(message);
 
       if (message.startsWith("PRESENT:"))
       {

@@ -1,7 +1,7 @@
 import serial
 import pandas as pd
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Arduino setup
 PORT = "COM3"      # Change if needed
@@ -64,7 +64,7 @@ def get_session_times(session):
     return start_time, end_time
 
 # Function 7: Process card step by step
-def process_card(arduino, uid, current_week):
+def process_card(arduino, uid, current_week, current_session):
     df = load_attendance_database()
     student = find_student(df, uid)
 
@@ -113,9 +113,12 @@ def process_card(arduino, uid, current_week):
 
         save_attendance_database(df)
 
-        send_message(arduino, f"PRESENT:{student_name}")
+        send_message(arduino, f"\nPRESENT:{student_name}")
 
-        print(f"\nStudent ID: {student_ID}")
+        print("="*15)
+        print("    CHECKIN")
+        print("="*15)
+        print(f"Student ID: {student_ID}")
         print(f"Name: {student_name}")
         print("Attendance Recorded")
         print("Status: 1")
@@ -130,6 +133,9 @@ def process_card(arduino, uid, current_week):
 
         send_message(arduino,f"CHECKOUT:{student_name}")
 
+        print("="*15)
+        print("    CHECKOUT")
+        print("="*15)
         print(f"{student_name} Checked Out")
         print(f"Student ID: {student_ID}")
         print(f"Name: {student_name}")
@@ -167,7 +173,7 @@ def main():
                 if uid:
                     print(f"\nScanned UID: {uid}")
                     # Call the process card function
-                    process_card(arduino, uid, current_week)
+                    process_card(arduino, uid, current_week, current_session)
     except KeyboardInterrupt:
         print("\nSystem Stopped Successfully")
     finally:
