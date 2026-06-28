@@ -164,11 +164,11 @@ The system relies on a single Excel workbook (`Attendance.xlsx`) structured as f
 
 The system provides immediate multimodal feedback for every scan:
 
-| Status | Green LED (D2) | Red LED 1 (D3) | Red LED 2 (D4) | Buzzer (D5) | LCD Message |
+| Status | Green LED (D2) | Blue LED 1 (D3) | Red LED 1 (D4) | Buzzer (D5) | LCD Message |
 | :--- | :---: | :---: | :---: | :--- | :--- |
 | **Attendance Marked** | ON | OFF | OFF | Short Beep (100ms) | `WELCOME [NAME]` <br> `ATTENDANCE SAVED` |
-| **Unknown Card** | OFF | ON | OFF | 2 Short Beeps | `UNKNOWN CARD` <br> `ACCESS DENIED` |
-| **Duplicate Scan** | OFF | OFF | ON | Long Beep (500ms) | `ALREADY PRESENT` <br> `WEEK RECORDED` |
+| **Unknown Card** | OFF | OFF | ON | 2 Short Beeps | `UNKNOWN CARD` <br> `ACCESS DENIED` |
+| **Duplicate Scan** | OFF | ON | OFF | Long Beep (500ms) | `ALREADY PRESENT` <br> `WEEK RECORDED` |
 
 
 ## 10. Usage Guide
