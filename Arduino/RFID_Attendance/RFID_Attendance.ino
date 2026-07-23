@@ -87,9 +87,6 @@ void loop()
       String message = Serial.readStringUntil('\n');
       message.trim();
 
-      Serial.print("Received: ");
-      Serial.println(message);
-
       if (message.startsWith("PRESENT:"))
       {
         String name = message.substring(8);
@@ -192,4 +189,6 @@ void loop()
   lcd.print("READY");
 
   rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+  delay(1500);
 }

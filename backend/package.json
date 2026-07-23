@@ -1,0 +1,16 @@
+{
+  "name": "rfid-attendance-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@serialport/parser-readline": "^12.0.0",
+    "express": "^4.21.0",
+    "serialport": "^12.0.0",
+    "socket.io": "^4.8.0"
+  }
+}
