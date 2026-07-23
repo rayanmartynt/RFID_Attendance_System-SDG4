@@ -109,10 +109,10 @@ The system operates on a sequential logic loop:
 ### Peripheral Components
 | Component | Arduino Pin | Description |
 | :--- | :--- | :--- |
-| Green LED | D2 | Success indicator |
+| Green LED | D2 | Success indicator (Present / Check-out) |
 | Red LED (Unknown Card) | D3 | Unauthorized access |
-| Red LED (Duplicate) | D4 | Already scanned this week |
-| Buzzer | D5 | *Updated from D12 to avoid SPI conflict* |
+| Blue LED (Duplicate) | D4 | Already scanned this week |
+| Buzzer | A2 | Audio feedback tones |
 | LCD RS | D7 | Register Select |
 | LCD E | D6 | Enable |
 | LCD D4 – D7 | D5, D8, A0, A1 | Data buses (4-bit mode) |
