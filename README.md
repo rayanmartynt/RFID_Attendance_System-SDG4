@@ -14,18 +14,17 @@
 - [4. Technology Stack](#4-technology-stack)
   - [Hardware Components](#hardware-components)
   - [Software Dependencies](#software-dependencies)
-- [5. Hardware Schematics & Pin Mapping](#5-hardware-schematics--pin-mapping)
+- [5. Hardware Schematics, Pin Mapping, Diagram & Simulation](#5-hardware-schematics--pin-mapping--diagram--simulation)
 - [6. Software Installation & Setup](#6-software-installation--setup)
   - [Arduino IDE Configuration](#arduino-ide-configuration)
   - [Python Environment Setup](#python-environment-setup)
 - [7. Database Structure (Excel)](#7-database-structure-excel)
-- [8. Logic & Mathematical Calculations](#8-logic--mathematical-calculations)
-- [9. User Feedback Matrix](#9-user-feedback-matrix)
-- [10. Usage Guide](#10-usage-guide)
-- [11. Troubleshooting & Common Issues](#11-troubleshooting--common-issues)
-- [12. Future Enhancements](#12-future-enhancements)
-- [13. Author](#13-author)
-- [14. License](#14-license)
+- [8. User Feedback Matrix](#9-user-feedback-matrix)
+- [9. Usage Guide](#10-usage-guide)
+- [10. Troubleshooting & Common Issues](#11-troubleshooting--common-issues)
+- [11. Future Enhancements](#12-future-enhancements)
+- [12. Author](#13-author)
+- [13. License](#14-license)
 
 ---
 
@@ -91,7 +90,7 @@ The system operates on a sequential logic loop:
 
 ---
 
-## 5. Hardware Schematics & Pin Mapping
+## 5. Hardware Schematics, Pin Mapping, Diagram & Simulation
 
 > **⚠️ Correction Notice**: The buzzer has been moved from **D12** (conflicts with MISO) to **D5** for functional integrity.
 
@@ -113,9 +112,19 @@ The system operates on a sequential logic loop:
 | Red LED (Unknown Card) | D3 | Unauthorized access |
 | Blue LED (Duplicate) | D4 | Already scanned this week |
 | Buzzer | A2 | Audio feedback tones |
+| Green LED | D2 | Success indicator |
+| Red LED (Unknown Card) | A2 | Unauthorized access |
+| Red LED (Duplicate) | D4 | Already scanned this week |
+| Buzzer | D5 | *Updated from D12 to avoid SPI conflict* |
 | LCD RS | D7 | Register Select |
 | LCD E | D6 | Enable |
 | LCD D4 – D7 | D5, D8, A0, A1 | Data buses (4-bit mode) |
+
+### Diagram
+<img width="3000" height="2306" alt="Design" src="https://github.com/user-attachments/assets/21e58f9f-9426-4a25-ae05-028c0a1dfb23" />
+
+### Simulation
+https://github.com/user-attachments/assets/50ee161b-aff6-4718-b13f-4257404325e6
 
 ---
 
@@ -149,34 +158,21 @@ The system relies on a single Excel workbook (`Attendance.xlsx`) structured as f
 | RFID_UID | String | Unique 8-character Hex ID (e.g., `63A1B2C4`) |
 | Student_ID | String | Institutional enrollment number |
 | Name | String | Student's full name |
-| Week1 – Week12 | Integer (0/1) | Binary attendance per week |
-| Total_Present | Integer | Calculated sum of Weeks 1–12 |
-| Attendance_% | Float | (Total_Present / 12) * 100 |
+| Week1_Arrival – Week12_Arrival | String | Student's arrival time |
+| Week1_Departure – Week12_Departure | String | Student's departure time |
+| Week1_Status – Week12_Status | String | Student attendance status (Present, Late, Left-early, Absent) |
 
-## 8. Logic & Mathematical Calculations
 
-The system employs standard binary logic for attendance states:
-
-- **1** = Present (Attended)
-- **0** = Absent (Did not attend)
-
-**Attendance Percentage Formula**:
-$$ \text{Attendance Percentage} = \left( \frac{\text{Total Weeks Present}}{12} \right) \times 100 $$
-
-*Example*: If a student is present for **9 out of 12 weeks**:
-$$ \left( \frac{9}{12} \right) \times 100 = 75.00\% $$
-
----
 
 ## 9. User Feedback Matrix
 
 The system provides immediate multimodal feedback for every scan:
 
-| Status | Green LED (D2) | Red LED 1 (D3) | Red LED 2 (D4) | Buzzer (D5) | LCD Message |
+| Status | Green LED (D2) | Blue LED 1 (D3) | Red LED 1 (D4) | Buzzer (D5) | LCD Message |
 | :--- | :---: | :---: | :---: | :--- | :--- |
 | **Attendance Marked** | ON | OFF | OFF | Short Beep (100ms) | `WELCOME [NAME]` <br> `ATTENDANCE SAVED` |
-| **Unknown Card** | OFF | ON | OFF | 2 Short Beeps | `UNKNOWN CARD` <br> `ACCESS DENIED` |
-| **Duplicate Scan** | OFF | OFF | ON | Long Beep (500ms) | `ALREADY PRESENT` <br> `WEEK RECORDED` |
+| **Unknown Card** | OFF | OFF | ON | 2 Short Beeps | `UNKNOWN CARD` <br> `ACCESS DENIED` |
+| **Duplicate Scan** | OFF | ON | OFF | Long Beep (500ms) | `ALREADY PRESENT` <br> `WEEK RECORDED` |
 
 
 ## 10. Usage Guide
@@ -185,7 +181,7 @@ The system provides immediate multimodal feedback for every scan:
 2. **Select Week**: When prompted in the terminal, enter the current academic week (1–12).
 3. **Scan Cards**: Instruct students to tap their RFID cards sequentially.
 4. **Monitor Feedback**: Observe the LCD and terminal logs for real-time status.
-5. **Review Data**: Open `Attendance_Records.xlsx` to view updated attendance logs.
+5. **Review Data**: Open `Attendance.xlsx` to view updated attendance logs.
 6. **End Session**: Press `Ctrl+C` in the terminal to gracefully shut down the serial connection.
 
 
