@@ -1,211 +1,296 @@
-# RFID-Based Automated Student Attendance System
-
-[![Platform](https://img.shields.io/badge/platform-Arduino%20%26%20Python-blue)](https://www.arduino.cc/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen)]()
-
----
+# 📚 RFID-Based Automated Student Attendance System – Full‑Stack Edition
 
 ## 📑 Table of Contents
 
-- [1. Introduction](#1-introduction)
-- [2. Core Features](#2-core-features)
-- [3. System Workflow](#3-system-workflow)
-- [4. Technology Stack](#4-technology-stack)
-  - [Hardware Components](#hardware-components)
-  - [Software Dependencies](#software-dependencies)
-- [5. Hardware Schematics, Pin Mapping, Diagram & Simulation](#5-hardware-schematics--pin-mapping--diagram--simulation)
-- [6. Software Installation & Setup](#6-software-installation--setup)
-  - [Arduino IDE Configuration](#arduino-ide-configuration)
-  - [Python Environment Setup](#python-environment-setup)
-- [7. Database Structure (Excel)](#7-database-structure-excel)
-- [8. User Feedback Matrix](#9-user-feedback-matrix)
-- [9. Usage Guide](#10-usage-guide)
-- [10. Troubleshooting & Common Issues](#11-troubleshooting--common-issues)
-- [11. Future Enhancements](#12-future-enhancements)
-- [12. Author](#13-author)
-- [13. License](#14-license)
+1. [Introduction](#introduction)  
+2. [Core Features](#core-features)  
+3. [System Architecture](#system-architecture)  
+4. [Technology Stack](#technology-stack)  
+   - [Hardware Components](#hardware-components)  
+   - [Software Dependencies](#software-dependencies)  
+5. [Hardware Schematics & Pin Mapping](#hardware-schematics--pin-mapping)  
+6. [Software Installation & Setup](#software-installation--setup)  
+   - [Backend (Node.js + Flask)](#backend-nodejs--flask)  
+   - [Frontend (React)](#frontend-react)  
+   - [Arduino IDE Configuration](#arduino-ide-configuration)  
+7. [Database Structure (Excel)](#database-structure-excel)  
+8. [User Feedback Matrix](#user-feedback-matrix)  
+9. [Usage Guide](#usage-guide)  
+10. [Troubleshooting & Common Issues](#troubleshooting--common-issues)  
+11. [Future Enhancements](#future-enhancements)  
+12. [Author](#author)  
 
 ---
 
 ## 1. Introduction
 
-The **RFID-Based Automated Student Attendance System** is a smart, embedded solution engineered to modernize attendance tracking in universities and schools. By integrating **RFID technology**, **Arduino Uno**, **Python**, and **Microsoft Excel**, the system provides a seamless, error-free alternative to traditional paper registers.
+The **RFID-Based Automated Student Attendance System** is a fully integrated solution that combines **embedded hardware (Arduino + RFID)** with a **full‑stack software suite** to modernise attendance tracking in educational institutions.
 
-Each student is assigned a unique RFID card. Upon scanning, the system authenticates the user, records attendance for the selected academic week, updates the central Excel database in real-time, and delivers instantaneous visual and auditory feedback via LEDs, an LCD display, and a buzzer.
+This enhanced version introduces:
+- A **React‑based web dashboard** for live monitoring and control.
+- A **Node.js WebSocket server** that bridges the Arduino serial port and the frontend.
+- A **Flask REST API** to handle Excel read/write operations.
+- Real‑time updates via **Socket.IO**, ensuring that every scan is instantly reflected on the dashboard.
 
-This solution eliminates manual record-keeping, mitigates proxy attendance, and provides educators with robust digital data for analytics and reporting.
+Together, they eliminate manual record‑keeping, prevent proxy attendance, and provide educators with an intuitive interface to manage weekly sessions and review attendance analytics.
 
 ---
 
 ## 2. Core Features
 
-- **RFID-Based Authentication** – Unique UID verification for each student.
-- **Weekly Attendance Tracking** – Supports up to 12 academic weeks per semester.
-- **Real-Time Database Sync** – Direct updates to `.xlsx` files using Python libraries.
-- **Duplicate Entry Prevention** – Ensures a student is marked present only once per week.
-- **Multi-Modal Feedback** – 16×2 LCD, dual-color LEDs (Green/Red), and a buzzer for immediate status updates.
-- **Automated Calculations** – Computes total attendance percentages dynamically.
-- **Secure & Non-Volatile** – Data persists in Excel without requiring cloud connectivity.
+- **RFID Authentication** – Unique UID verification for each student.
+- **Weekly Attendance Tracking** – Supports up to **15 academic weeks** (configurable).
+- **Real‑Time Dashboard** – Shows total enrolled, arrivals, departures, and live scans.
+- **Dual‑Scan Logic** – Records **arrival** (1st scan) and **departure** (2nd scan) per week.
+- **Duplicate Prevention** – Prevents multiple scans in the same week.
+- **Multi‑Modal Feedback** – LCD, LEDs, and buzzer on the Arduino; browser notifications via the dashboard.
+- **Excel Database** – All attendance data is stored in `Attendance.xlsx` using `openpyxl` and `pandas`.
+- **Session Awareness** – Auto‑detects the current lecture session based on system time.
+- **Search & Filter** – Quickly locate students by name, ID, or RFID UID.
+- **Persistent Settings** – Selected week, session, and COM port survive page refreshes.
 
 ---
 
-## 3. System Workflow
+## 3. System Architecture
 
-The system operates on a sequential logic loop:
+The system is composed of four main layers:
 
-| Step | Action |
-| :---: | :--- |
-| **1** | The instructor powers on the system and selects the current week (Week 1 – Week 12). |
-| **2** | A student taps their RFID card on the RC522 reader. |
-| **3** | The reader captures the card's unique UID and transmits it to the Arduino via SPI. |
-| **4** | Arduino forwards the UID to the host PC via Serial Communication (USB). |
-| **5** | A Python script parses the serial data and queries the Excel database. |
-| **6** | **Conditional Logic**: <br> • *If UID exists and Week value is 0* → Mark as `1` (Present), update Excel, play success tone. <br> • *If UID exists and Week value is 1* → Reject as duplicate, play error tone. <br> • *If UID does not exist* → Reject as unauthorized, play alarm. |
-| **7** | The LCD updates with a relevant message while LEDs indicate the final status. |
+<img width="335" height="729" alt="RFID SYSTEM-Page-2 drawio" src="https://github.com/user-attachments/assets/d576f4f0-07e8-4dab-9586-a64b1140b45f" />
+
+
+**Data Flow:**
+1. A student taps an RFID card on the reader.
+2. Arduino reads the UID and sends it over USB serial.
+3. The Node.js backend captures the serial data and forwards it to the Flask API.
+4. Flask validates the UID against the Excel file, updates statuses and timestamps, and returns a result.
+5. The Node.js server sends the result back to the Arduino (for feedback) and broadcasts it to all connected web clients via Socket.IO.
+6. The React dashboard updates instantly, showing the scan result and refreshing the attendance table.
 
 ---
 
 ## 4. Technology Stack
 
 ### Hardware Components
-| Component | Model/Type | Quantity |
-| :--- | :--- | :--- |
-| Microcontroller | Arduino Uno R3 | 1 |
-| RFID Reader | RC522 (13.56 MHz) | 1 |
-| RFID Tags/Cards | ISO 14443A Compatible | N |
-| Display | 16×2 Character LCD (with I2C or parallel) | 1 |
-| Indicator LEDs | Green (Success), Red (Error 1), Red (Error 2) | 3 |
-| Buzzer | 5V Active Piezo | 1 |
-| Power Supply | 5V 2A Adapter (external recommended) | 1 |
-| Interconnects | Jumper Wires & Breadboard | Set |
+
+| Component              | Model/Type                | Qty |
+|------------------------|---------------------------|-----|
+| Microcontroller        | Arduino Uno R3            | 1   |
+| RFID Reader            | RC522 (13.56 MHz)         | 1   |
+| RFID Tags/Cards        | ISO 14443A Compatible     | N   |
+| Display                | 16×2 LCD (I2C or parallel)| 1   |
+| Indicator LEDs         | Green, Blue, Red          | 3   |
+| Buzzer                 | 5V Active Piezo           | 1   |
+| Power Supply           | 5V 2A Adapter             | 1   |
+| Interconnects          | Jumper Wires & Breadboard | Set |
 
 ### Software Dependencies
-- **Programming Languages**: C++ (Arduino), Python 3.8+
-- **Arduino Libraries**: `SPI.h`, `MFRC522.h`, `LiquidCrystal.h`
-- **Python Libraries**:
-  - `pyserial` – Serial communication.
-  - `pandas` – Data manipulation.
-  - `openpyxl` – Excel read/write operations.
+
+| Layer       | Language / Framework            | Key Libraries / Tools                     |
+|-------------|----------------------------------|-------------------------------------------|
+| **Frontend**| React 18 + Vite                 | Socket.IO client, `fetch`, `localStorage` |
+| **Backend** | Node.js (Express)               | `serialport`, `socket.io`, `cors`         |
+| **API**     | Python 3.8+ (Flask)             | `pandas`, `openpyxl`, `flask-cors`        |
+| **Arduino** | C++ (Arduino IDE)               | `SPI.h`, `MFRC522.h`, `LiquidCrystal.h`   |
 
 ---
 
-## 5. Hardware Schematics, Pin Mapping, Diagram & Simulation
+## 5. Hardware Schematics & Pin Mapping
 
-> **⚠️ Correction Notice**: The buzzer has been moved from **D12** (conflicts with MISO) to **D5** for functional integrity.
+> ⚠️ **Correction:** The buzzer is moved from D12 (conflicts with SPI MISO) to D5 for functional integrity.
 
 ### RC522 RFID Reader
+
 | RC522 Pin | Arduino Pin |
-| :--- | :--- |
-| SDA | D10 |
-| SCK | D13 |
-| MOSI | D11 |
-| MISO | D12 |
-| RST | D9 |
-| GND | GND |
-| 3.3V | 3.3V |
+|-----------|-------------|
+| SDA       | D10         |
+| SCK       | D13         |
+| MOSI      | D11         |
+| MISO      | D12         |
+| RST       | D9          |
+| GND       | GND         |
+| 3.3V      | 3.3V        |
 
 ### Peripheral Components
-| Component | Arduino Pin | Description |
-| :--- | :--- | :--- |
-| Green LED | D2 | Success indicator (Present / Check-out) |
-| Red LED (Unknown Card) | D3 | Unauthorized access |
-| Blue LED (Duplicate) | D4 | Already scanned this week |
-| Buzzer | A2 | Audio feedback tones |
-| Green LED | D2 | Success indicator |
-| Red LED (Unknown Card) | A2 | Unauthorized access |
-| Red LED (Duplicate) | D4 | Already scanned this week |
-| Buzzer | D5 | *Updated from D12 to avoid SPI conflict* |
-| LCD RS | D7 | Register Select |
-| LCD E | D6 | Enable |
-| LCD D4 – D7 | D5, D8, A0, A1 | Data buses (4-bit mode) |
 
-### Diagram
-<img width="3000" height="2306" alt="Design" src="https://github.com/user-attachments/assets/21e58f9f-9426-4a25-ae05-028c0a1dfb23" />
+| Component           | Arduino Pin | Description                         |
+|---------------------|-------------|-------------------------------------|
+| Green LED (Success) | D2          | Present / Check‑out success         |
+| Blue LED (Duplicate)| D3          | Already scanned this week           |
+| Red LED (Unknown)   | D4          | Unauthorised access                 |
+| Buzzer              | D5          | Audio feedback tones                |
+| LCD RS              | D7          | Register Select                     |
+| LCD E               | D6          | Enable                              |
+| LCD D4 – D7         | D5, D8, A0, A1 | Data buses (4‑bit mode)         |
 
-### Simulation
-https://github.com/user-attachments/assets/50ee161b-aff6-4718-b13f-4257404325e6
+> **Note:** The LCD is configured in 4‑bit mode. If using an I2C backpack, adjust the pins accordingly.
 
 ---
 
 ## 6. Software Installation & Setup
 
-### Arduino IDE Configuration
-1. Install the **Arduino IDE** (v2.x recommended).
-2. Open the Library Manager (`Sketch > Include Library > Manage Libraries`).
-3. Install **MFRC522** by Miguel Balboa.
-4. Install **LiquidCrystal** (built-in, but ensure it's enabled).
-5. Flash the provided `.ino` file to your Arduino Uno.
+### Prerequisites
+- **Node.js** (v16 or later) and **npm**
+- **Python** (v3.8+) with `pip`
+- **Arduino IDE** (v2.x recommended)
+- **Git**
 
-### Python Environment Setup
-Execute the following commands in your terminal:
-
-```bash
-# Create a virtual environment (optional)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install required packages
-pip install pyserial pandas openpyxl
+### Project Structure
 ```
+RFID_Attendance_System-SDG4/
+├── frontend/               # React frontend (Vite)
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── styles.css
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
+├── backend/                # Node.js WebSocket server
+│   ├── server.js
+│   ├── package.json
+├── Python/                 # Flask API and Arduino scripts
+│   ├── app.py              # Flask application
+│   ├── attendance.py       # (optional) standalone Python script
+│   ├── Attendance.xlsx     # Excel database (must exist)
+├── Arduino/                # Arduino sketch
+│   └── RFID_Attendance.ino
+└── README.md
+```
+
+---
+
+### Backend (Node.js + Flask)
+
+#### 1. Flask API (Python)
+Navigate to the `Python/` folder and install dependencies:
+```bash
+cd Python
+```
+Run the Flask server:
+```bash
+python app.py
+```
+It will start on `http://localhost:5000` by default.
+
+#### 2. Node.js WebSocket Server
+Navigate to the `backend/` folder:
+```bash
+cd backend
+npm install
+```
+Start the server:
+```bash
+npm start
+```
+
+### Frontend (React)
+Navigate to the `frontend/` folder:
+```bash
+cd frontend
+npm install
+```
+Run the development server:
+```bash
+npm run dev
+```
+
+### Arduino IDE Configuration
+1. Install the Arduino IDE.
+2. Open the `Arduino/RFID_Attendance.ino` sketch.
+3. Install required libraries via Library Manager:
+   - **MFRC522** by Miguel Balboa
+   - **LiquidCrystal** (built‑in)
+4. Verify the pin mappings match your wiring (see section 5).
+5. Select the correct board (Arduino Uno) and port.
+6. Upload the sketch.
+
+---
 
 ## 7. Database Structure (Excel)
 
-The system relies on a single Excel workbook (`Attendance.xlsx`) structured as follows:
+The system relies on a single Excel workbook: **`Attendance.xlsx`**, located in the `Python/` folder.  
+The sheet must contain the following columns (order is flexible, but names must match exactly):
 
-| Column Name | Data Type | Description |
-| :--- | :--- | :--- |
-| RFID_UID | String | Unique 8-character Hex ID (e.g., `63A1B2C4`) |
-| Student_ID | String | Institutional enrollment number |
-| Name | String | Student's full name |
-| Week1_Arrival – Week12_Arrival | String | Student's arrival time |
-| Week1_Departure – Week12_Departure | String | Student's departure time |
-| Week1_Status – Week12_Status | String | Student attendance status (Present, Late, Left-early, Absent) |
+| Column Name            | Type    | Description |
+|------------------------|---------|-------------|
+| `Student_ID`           | String  | Institutional enrollment number |
+| `Name`                 | String  | Student's full name |
+| `RFID_UID`             | String  | Unique 8‑character hex UID |
+| `Week1_Status` … `Week15_Status` | Integer | 1 = Present, 0 = Absent |
+| `Week1_Arrival` … `Week15_Arrival` | Time | Arrival timestamp (HH:MM:SS) |
+| `Week1_Departure` … `Week15_Departure` | Time | Departure timestamp (HH:MM:SS) |
 
+> The Flask API handles all read/write operations. The Node.js backend never touches the Excel file directly; it forwards requests to the API.
 
+---
 
-## 9. User Feedback Matrix
+## 8. User Feedback Matrix
 
 The system provides immediate multimodal feedback for every scan:
 
-| Status | Green LED (D2) | Blue LED 1 (D3) | Red LED 1 (D4) | Buzzer (D5) | LCD Message |
-| :--- | :---: | :---: | :---: | :--- | :--- |
-| **Attendance Marked** | ON | OFF | OFF | Short Beep (100ms) | `WELCOME [NAME]` <br> `ATTENDANCE SAVED` |
-| **Unknown Card** | OFF | OFF | ON | 2 Short Beeps | `UNKNOWN CARD` <br> `ACCESS DENIED` |
-| **Duplicate Scan** | OFF | ON | OFF | Long Beep (500ms) | `ALREADY PRESENT` <br> `WEEK RECORDED` |
+| Status                    | Green LED | Blue LED | Red LED | Buzzer            | LCD Message                | Dashboard Banner          |
+|---------------------------|-----------|----------|---------|-------------------|----------------------------|---------------------------|
+| **Arrival (1st scan)**    | ON        | OFF      | OFF     | Short beep        | `WELCOME [NAME]`<br>`ARRIVAL SAVED` | "1st Scan Recorded" |
+| **Departure (2nd scan)**  | ON        | OFF      | OFF     | Short beep        | `GOODBYE [NAME]`<br>`DEPARTURE SAVED` | "2nd Scan Recorded" |
+| **Duplicate Scan**        | OFF       | ON       | OFF     | Long beep         | `ALREADY PRESENT`<br>`WEEK RECORDED`  | "3rd Scan Alert" |
+| **Unknown Card**          | OFF       | OFF      | ON      | Two short beeps   | `UNKNOWN CARD`<br>`ACCESS DENIED`     | "Access Denied" |
+| **Error (API down)**      | OFF       | OFF      | ON      | Continuous alarm  | `SYSTEM ERROR`<br>`CONTACT ADMIN`     | "System Alert" |
 
+---
 
-## 10. Usage Guide
+## 9. Usage Guide
 
-1. **Initialize**: Launch the Python script (`attendance.py`) to start serial monitoring.
-2. **Select Week**: When prompted in the terminal, enter the current academic week (1–12).
-3. **Scan Cards**: Instruct students to tap their RFID cards sequentially.
-4. **Monitor Feedback**: Observe the LCD and terminal logs for real-time status.
-5. **Review Data**: Open `Attendance.xlsx` to view updated attendance logs.
-6. **End Session**: Press `Ctrl+C` in the terminal to gracefully shut down the serial connection.
+### Starting the System
+1. **Power on** the Arduino and ensure it is connected to the PC via USB.
+2. **Launch** the Flask API (`python app.py`).
+3. **Launch** the Node.js backend (`npm start`).
+4. **Launch** the React frontend (`npm run dev`).
+5. Open the dashboard in your browser (`http://localhost:3000`).
 
+### Daily Operation
+1. **Select the current week** (1–15) using the dropdown.
+2. **Select the lecture session** (1–4) – the system may auto‑detect based on time.
+3. **Connect to the Arduino** by selecting the COM port and clicking “Connect Arduino”.
+4. **Students tap their RFID cards** one by one.
+5. The dashboard will show live scan results, update the attendance table, and highlight the scanned student.
+6. **Monitor metrics** – total enrolled, arrivals, departures – update in real time.
+7. **Search** for a student by name, ID, or UID to view their attendance record.
 
-## 11. Troubleshooting & Common Issues
+### Ending a Session
+- Simply close the browser tab or stop the servers with `Ctrl+C`.
+- All data is already saved to Excel, so no manual saving is needed.
 
-| Issue | Likely Cause | Solution |
-| :--- | :--- | :--- |
-| **RFID reader not detecting cards** | Loose connections or insufficient power. | Check SPI wiring. Use external 5V supply instead of USB. |
-| **Serial port not found** | Incorrect COM port or driver issues. | Update Arduino drivers. Verify port name in Python script. |
-| **Excel file not updating** | File is open in Excel (write-lock). | Close the Excel file before running the script. |
-| **Buzzer interfering with RFID** | Buzzer uses D12 (conflicts with SPI MISO). | **Fixed** – use D5 as per the updated schematic above. |
-| **Duplicate entries recorded** | Logic misalignment in week selection. | Ensure the Python script correctly parses the current week variable. |
+---
 
+## 10. Troubleshooting & Common Issues
 
-## 12. Future Enhancements
+| Issue                                           | Likely Cause                                      | Solution |
+|-------------------------------------------------|---------------------------------------------------|----------|
+| RFID reader not detecting cards                 | Loose wiring or insufficient power                | Check connections; use external 5V supply |
+| Serial port not found                           | Incorrect port name or driver issue               | Update drivers; verify port in `.env` |
+| Excel file not updating                         | File is open in Excel (write‑lock)                | Close Excel before running Flask |
+| Buzzer interferes with RFID                     | Buzzer on D12 (conflicts with SPI MISO)           | Use D5 as per updated schematic |
+| Duplicate entries allowed                       | Week selection mismatch between frontend and API  | Ensure Node.js backend and Flask use same week (auto‑synced) |
+| Frontend shows “Backend Offline”                | Node.js server not running or wrong `VITE_BACKEND_URL` | Check server status; update `.env` |
+| Scan results not appearing on dashboard         | Socket.IO connection lost                         | Refresh page; check console for errors |
+| Arduino repeatedly reconnects                   | Serial port flaky or power issues                 | Use a powered USB hub; increase retry delay in `.env` |
+| Flask API returns 500 errors                    | Excel file missing or malformed                   | Ensure `Attendance.xlsx` exists with correct column headers |
 
-- **GUI Dashboard**: Develop a Tkinter/PyQt interface for non-technical users.
-- **Database Migration**: Transition from Excel to SQLite/MySQL for robust multi-user access.
-- **Wi-Fi/Cloud Sync**: Add an ESP8266 module to push attendance data to Google Sheets or Firebase.
-- **Biometric Fallback**: Integrate a fingerprint scanner as a secondary authentication method.
-- **Automated Reports**: Generate PDF attendance reports and email them directly to faculty.
+---
 
+## 11. Future Enhancements
 
-## 13. Author
+- **GUI Dashboard** – Already implemented with React; possible additions: charts, export to PDF.
+- **Database Migration** – Switch from Excel to SQLite/PostgreSQL for multi‑user support.
+- **Wi‑Fi/Cloud Sync** – Add an ESP8266 to push attendance data to Google Sheets or Firebase.
+- **Biometric Fallback** – Integrate a fingerprint scanner as secondary authentication.
+- **Automated Reports** – Generate weekly/monthly reports and email them to faculty.
+- **Mobile App** – Develop a React Native companion app for on‑the‑go monitoring.
+
+---
+
+## 12. Author
 
 **Rayan Martin Turay**  
-[GitHub](https://github.com/rayanmartynt)
+- GitHub: [@rayanmartynt](https://github.com/rayanmartynt)  
+- Project Repository: [RFID_Attendance_System-SDG4](https://github.com/rayanmartynt/RFID_Attendance_System-SDG4.git)
