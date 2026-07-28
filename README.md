@@ -193,6 +193,9 @@ Run the development server:
 ```bash
 npm run dev
 ```
+Preview
+<img width="1919" height="912" alt="Screenshot 2026-07-28 230513" src="https://github.com/user-attachments/assets/34a857a6-64f9-4108-85af-4ff28b28d972" />
+
 
 ### Arduino IDE Configuration
 1. Install the Arduino IDE.
