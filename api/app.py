@@ -8,67 +8,46 @@ import sys
 app = Flask(__name__)
 CORS(app)
 
-# Path to Excel file
-EXCEL_FILE = os.path.join(os.path.dirname(__file__), "..", "Python", "Attendance.xlsx")
+# Path to Excel file (dynamic, can be set via /set-workbook endpoint)
+EXCEL_FILE = None
 CURRENT_WEEK = 1
-CURRENT_SESSION = 1
 
-SESSIONS = {
-    1: ("08:30", "11:30"),
-    2: ("11:30", "14:30"),
-    3: ("14:30", "17:30"),
-    4: ("17:30", "20:30"),
-}
+def get_excel_file():
+    """Get the current Excel file path. Auto-detects available Excel file if not set."""
+    global EXCEL_FILE
+    if EXCEL_FILE and os.path.exists(EXCEL_FILE):
+        return EXCEL_FILE
+    
+    # Auto-detect any Excel file in uploads directory
+    uploads_dir = os.path.join(os.path.dirname(__file__), "..", "backend", "uploads")
+    if os.path.exists(uploads_dir):
+        for filename in os.listdir(uploads_dir):
+            if filename.endswith((".xlsx", ".xls")):
+                EXCEL_FILE = os.path.join(uploads_dir, filename)
+                log_msg(f"Auto-detected Excel file: {EXCEL_FILE}")
+                return EXCEL_FILE
+    
+    # Fallback to default path
+    default_path = os.path.join(os.path.dirname(__file__), "..", "backend", "uploads", "Attendance.xlsx")
+    return default_path
+
 def log_msg(msg):
     """Log message with timestamp for debugging."""
     print(f"[Flask] {datetime.now().isoformat()} {msg}", file=sys.stderr, flush=True)
 
 
-def parse_session_clock(time_str):
-    """Parse HH:MM into today's datetime."""
-    hour, minute = map(int, time_str.split(":"))
-    now = datetime.now()
-    return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-
-def get_session_window(session):
-    """Return (start, end) datetime for a session today."""
-    start_str, end_str = SESSIONS[session]
-    start = parse_session_clock(start_str)
-    end = parse_session_clock(end_str)
-    return start, end
-
-
-def detect_current_session(now=None):
-    """Return the session number active at `now`, or None if outside all windows."""
-    now = now or datetime.now()
-    for session, (start_str, end_str) in SESSIONS.items():
-        start = parse_session_clock(start_str)
-        end = parse_session_clock(end_str)
-        # Inclusive start; exclusive end except last session (inclusive end)
-        if session == max(SESSIONS):
-            if start <= now <= end:
-                return session
-        elif start <= now < end:
-            return session
-    return None
-
-
-def session_status_payload(session):
-    start_str, end_str = SESSIONS[session]
-    return {
-        "session": session,
-        "start": start_str,
-        "end": end_str,
-        "label": f"Session {session} ({start_str} – {end_str})",
-    }
-
 # Load the students data from the Excel
 def load_students():
     """Load students from Excel."""
     try:
-        log_msg("Loading students from Excel...")
-        df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
+        excel_path = get_excel_file()
+        # Check if file exists first
+        if not os.path.exists(excel_path):
+            log_msg(f"WARNING: Excel file not found at {excel_path}")
+            return None
+            
+        log_msg(f"Loading students from Excel: {excel_path}")
+        df = pd.read_excel(excel_path, engine='openpyxl')
         log_msg(f"Loaded {len(df)} students")
         # Ensure all week columns exist and convert to string type
         for week in range(1, 13):
@@ -119,6 +98,8 @@ def save_students(df):
     max_retries = 3
     retry_delay = 0.1  # seconds
     
+    excel_path = get_excel_file()
+    
     # Recalculate totals
     status_cols = [f"Week{w}_Status" for w in range(1, 13)]
     for col in status_cols:
@@ -130,12 +111,12 @@ def save_students(df):
     df["Attendance_%"] = (df["Total_Present"] / 12.0 * 100).round(2)
 
     # Must use .xlsx extension so openpyxl is selected correctly
-    temp_file = EXCEL_FILE + ".tmp.xlsx"
+    temp_file = excel_path + ".tmp.xlsx"
     for attempt in range(max_retries):
         try:
-            log_msg(f"Saving students (attempt {attempt + 1}/{max_retries})...")
+            log_msg(f"Saving students to {excel_path} (attempt {attempt + 1}/{max_retries})...")
             df.to_excel(temp_file, index=False, engine="openpyxl")
-            os.replace(temp_file, EXCEL_FILE)
+            os.replace(temp_file, excel_path)
             log_msg("Saved successfully")
             return True
         except Exception as e:
@@ -154,7 +135,7 @@ def save_students(df):
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "RFID API running", "week": CURRENT_WEEK, "session": CURRENT_SESSION})
+    return jsonify({"status": "RFID API running", "week": CURRENT_WEEK})
 
 @app.route("/students", methods=["GET"])
 def get_students():
@@ -206,7 +187,6 @@ def get_attendance():
 
     return jsonify({
         "current_week": CURRENT_WEEK,
-        "current_session": CURRENT_SESSION,
         "students": students_records,
     }), 200
 
@@ -238,51 +218,11 @@ def _process_scan():
     except (TypeError, ValueError):
         week = CURRENT_WEEK
 
-    try:
-        session = int(data.get("session", CURRENT_SESSION))
-    except (TypeError, ValueError):
-        session = CURRENT_SESSION
-
-    strict_schedule = bool(data.get("strict", False))
-
     if not uid:
         return jsonify({"error": "No UID provided"}), 400
 
-    if session not in SESSIONS:
-        return jsonify({"error": "Session must be 1-4"}), 400
-
     now_dt = datetime.now()
-    session_start, session_end = get_session_window(session)
-    start_str, end_str = SESSIONS[session]
-
-    if strict_schedule:
-        # Reject scans before the selected session starts if strict mode active
-        if now_dt < session_start:
-            log_msg(f"Scan rejected: too early for session {session} (starts {start_str})")
-            return jsonify({
-                "status": "TOO_EARLY",
-                "message": (
-                    f"Attendance not recorded. Session {session} starts at {start_str}. "
-                    f"Current time is {now_dt.strftime('%H:%M:%S')}."
-                ),
-                "session": session_status_payload(session),
-                "student": None,
-            }), 200
-
-        # Reject scans after the selected session ends if strict mode active
-        if now_dt > session_end:
-            log_msg(f"Scan rejected: session {session} already ended at {end_str}")
-            return jsonify({
-                "status": "TOO_LATE",
-                "message": (
-                    f"Attendance not recorded. Session {session} ended at {end_str}. "
-                    f"Current time is {now_dt.strftime('%H:%M:%S')}."
-                ),
-                "session": session_status_payload(session),
-                "student": None,
-            }), 200
-
-    log_msg(f"Processing UID: {uid}, week: {week}, session: {session}")
+    log_msg(f"Processing UID: {uid}, week: {week}")
     df = load_students()
     if df is None:
         log_msg("ERROR: Could not load Excel file")
@@ -308,7 +248,6 @@ def _process_scan():
         return jsonify({
             "status": "UNKNOWN",
             "message": f"Unknown card UID: {uid}",
-            "session": session_status_payload(session),
             "student": None
         }), 200
 
@@ -347,8 +286,7 @@ def _process_scan():
 
         return jsonify({
             "status": "ARRIVAL",
-            "message": f"Arrival recorded for {student_name} (Session {session})",
-            "session": session_status_payload(session),
+            "message": f"Arrival recorded for {student_name}",
             "student": {
                 "id": student_id,
                 "name": student_name,
@@ -376,8 +314,7 @@ def _process_scan():
 
         return jsonify({
             "status": "DEPARTURE",
-            "message": f"Departure recorded for {student_name} (Session {session})",
-            "session": session_status_payload(session),
+            "message": f"Departure recorded for {student_name}",
             "student": {
                 "id": student_id,
                 "name": student_name,
@@ -392,7 +329,6 @@ def _process_scan():
     return jsonify({
         "status": "DUPLICATE",
         "message": f"{student_name} already scanned for week {week}",
-        "session": session_status_payload(session),
         "student": {
             "id": student_id,
             "name": student_name,
@@ -400,16 +336,6 @@ def _process_scan():
             "arrival_time": _cell_to_text(arrival),
             "departure_time": _cell_to_text(departure)
         }
-    }), 200
-
-@app.route("/sessions", methods=["GET"])
-def get_sessions():
-    """List sessions and the one currently active by clock time."""
-    active = detect_current_session()
-    return jsonify({
-        "sessions": [session_status_payload(s) for s in SESSIONS],
-        "active_session": active,
-        "current_session": CURRENT_SESSION,
     }), 200
 
 @app.route("/set-week", methods=["POST"])
@@ -430,23 +356,28 @@ def set_week():
         return jsonify({"week": CURRENT_WEEK}), 200
     return jsonify({"error": "Week must be 1-12"}), 400
 
-@app.route("/set-session", methods=["POST"])
-def set_session():
-    """Set the current session (1-4)."""
-    global CURRENT_SESSION
+@app.route("/set-workbook", methods=["POST"])
+def set_workbook():
+    """Set the active Excel workbook file."""
+    global EXCEL_FILE
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON payload"}), 400
 
-    try:
-        session = int(data.get("session", 1))
-    except (TypeError, ValueError):
-        return jsonify({"error": "Session must be 1-4"}), 400
+    filename = data.get("filename")
+    if not filename:
+        return jsonify({"error": "filename is required"}), 400
 
-    if session in SESSIONS:
-        CURRENT_SESSION = session
-        return jsonify(session_status_payload(CURRENT_SESSION)), 200
-    return jsonify({"error": "Session must be 1-4"}), 400
+    # Construct the full path to the uploads directory
+    uploads_dir = os.path.join(os.path.dirname(__file__), "..", "backend", "uploads")
+    target_path = os.path.join(uploads_dir, filename)
+
+    if not os.path.exists(target_path):
+        return jsonify({"error": f"File '{filename}' not found in uploads directory"}), 404
+
+    EXCEL_FILE = target_path
+    log_msg(f"Active workbook set to: {EXCEL_FILE}")
+    return jsonify({"success": True, "filename": filename}), 200
 
 @app.errorhandler(Exception)
 def unhandled_exception(error):

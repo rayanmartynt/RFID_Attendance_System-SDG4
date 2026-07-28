@@ -42,6 +42,13 @@ if (!fs.existsSync(excelUploadDir)) fs.mkdirSync(excelUploadDir, { recursive: tr
 // Tracks the path of the currently active workbook (set on upload)
 let currentExcelPath = null;
 
+// Initialize currentExcelPath to existing Attendance.xlsx if available
+const attendanceFilePath = path.join(excelUploadDir, "Attendance.xlsx");
+if (fs.existsSync(attendanceFilePath)) {
+  currentExcelPath = attendanceFilePath;
+  console.log(`Initialized with existing workbook: ${attendanceFilePath}`);
+}
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, excelUploadDir),
   // Preserve the lecturer's original filename
@@ -124,7 +131,7 @@ app.post("/workbooks/upload", upload.single("workbook"), (req, res) => {
 });
 
 // Set a workbook as the active one
-app.post("/workbooks/select", (req, res) => {
+app.post("/workbooks/select", async (req, res) => {
   const { filename } = req.body;
   if (!filename) return res.status(400).json({ error: "filename is required" });
   const targetPath = path.join(excelUploadDir, filename);
@@ -133,6 +140,23 @@ app.post("/workbooks/select", (req, res) => {
   }
   currentExcelPath = targetPath;
   console.log(`Active workbook set to: ${currentExcelPath}`);
+
+  // Notify Flask API of the new workbook
+  try {
+    const flaskResponse = await fetch(`${FLASK_API}/set-workbook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename }),
+    });
+    if (flaskResponse.ok) {
+      console.log(`Flask API notified of workbook change: ${filename}`);
+    } else {
+      console.warn(`Flask API failed to set workbook: ${flaskResponse.status}`);
+    }
+  } catch (err) {
+    console.warn("Failed to notify Flask API of workbook change:", err.message);
+  }
+
   res.json({ success: true, activeFilename: filename });
 });
 
@@ -152,13 +176,18 @@ app.delete("/workbooks/:filename", (req, res) => {
 
 app.get("/attendance", async (req, res) => {
   try {
+    console.log(`Attempting to fetch from Flask API: ${FLASK_API}/attendance`);
     const response = await fetch(`${FLASK_API}/attendance`);
+    console.log(`Flask response status: ${response.status}`);
     if (response.ok) {
       const data = await response.json();
+      console.log(`Successfully received data from Flask with ${data.students?.length || 0} students`);
       return res.json(data);
+    } else {
+      console.warn(`Flask API returned status ${response.status}, falling back to direct Excel read`);
     }
   } catch (err) {
-    console.warn("Flask API unreachable for /attendance, falling back to direct Excel read");
+    console.warn("Flask API unreachable for /attendance, falling back to direct Excel read:", err.message);
   }
 
   // Fallback: read the lecturer's uploaded workbook directly with Python
@@ -206,13 +235,18 @@ app.get("/attendance", async (req, res) => {
 
 app.get("/students", async (req, res) => {
   try {
+    console.log(`Attempting to fetch students from Flask API: ${FLASK_API}/students`);
     const response = await fetch(`${FLASK_API}/students`);
+    console.log(`Flask students response status: ${response.status}`);
     if (response.ok) {
       const data = await response.json();
+      console.log(`Successfully received students from Flask`);
       return res.json(data);
+    } else {
+      console.warn(`Flask API returned status ${response.status} for /students, falling back to direct Excel read`);
     }
   } catch (err) {
-    console.warn("Flask API unreachable for /students, falling back to direct Excel read");
+    console.warn("Flask API unreachable for /students, falling back to direct Excel read:", err.message);
   }
 
   if (!currentExcelPath) {
@@ -296,6 +330,33 @@ function sendToArduino(message) {
     port.write(message + "\n", (err) => {
       if (err) console.error("Error writing to Arduino serial:", err.message);
     });
+  }
+}
+
+// Auto-select session based on current time
+function autoSelectSession() {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const currentTime = hours * 60 + minutes; // Convert to minutes since midnight
+
+  // Define session time ranges (in minutes since midnight)
+  const sessions = [
+    { session: 1, start: 8 * 60 + 30, end: 11 * 60 + 30 }, // 08:30 - 11:30
+    { session: 2, start: 11 * 60 + 30, end: 14 * 60 + 30 }, // 11:30 - 14:30
+    { session: 3, start: 14 * 60 + 30, end: 17 * 60 + 30 }, // 14:30 - 17:30
+    { session: 4, start: 17 * 60 + 30, end: 20 * 60 + 30 }, // 17:30 - 20:30
+  ];
+
+  for (const s of sessions) {
+    if (currentTime >= s.start && currentTime < s.end) {
+      if (currentSession !== s.session) {
+        currentSession = s.session;
+        console.log(`Auto-selected session ${currentSession}`);
+        io.emit("session-changed", { session: currentSession });
+      }
+      return;
+    }
   }
 }
 

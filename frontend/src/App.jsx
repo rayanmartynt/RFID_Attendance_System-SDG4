@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import { translations, languages } from "./translations";
 
 
 function App() {
@@ -16,6 +17,10 @@ function App() {
     if (savedTheme) return savedTheme;
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem("rfid_language") || "en";
+  });
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [availablePorts, setAvailablePorts] = useState(["COM3", "COM4", "COM5"]);
   const [arduinoStatus, setArduinoStatus] = useState({ connected: false, message: "Connecting to server..." });
@@ -32,6 +37,29 @@ function App() {
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
+  const t = translations[language] || translations.en;
+
+  const formatText = (key, params = {}) => {
+    let text = key;
+    if (typeof key === 'string' && key.includes('.')) {
+      const keys = key.split('.');
+      let value = t;
+      for (const k of keys) {
+        value = value?.[k];
+        if (value === undefined) return key;
+      }
+      text = value;
+    } else {
+      text = t[key] || key;
+    }
+    
+    // Replace parameters like {week}, {filename}, etc.
+    Object.keys(params).forEach(param => {
+      text = text.replace(`{${param}}`, params[param]);
+    });
+    return text;
+  };
+
   // Save changes to localStorage
   useEffect(() => {
     localStorage.setItem("rfid_week", currentWeek);
@@ -45,6 +73,23 @@ function App() {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("rfid_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("rfid_language", language);
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+  }, [language]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuOpen && !event.target.closest('.settings-menu-container')) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   // Live Clock
   useEffect(() => {
@@ -146,7 +191,7 @@ function App() {
   const handleWorkbookUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setUploadStatus({ type: "loading", message: `Uploading "${file.name}"...` });
+    setUploadStatus({ type: "loading", message: formatText('library.uploading', { filename: file.name }) });
     const formData = new FormData();
     formData.append("workbook", file);
     try {
@@ -156,14 +201,14 @@ function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        setUploadStatus({ type: "success", message: `"${file.name}" added to library.` });
+        setUploadStatus({ type: "success", message: formatText('library.uploadSuccess', { filename: file.name }) });
         fetchWorkbooks();
         setTimeout(() => setUploadStatus(null), 5000);
       } else {
-        setUploadStatus({ type: "error", message: data.error || "Upload failed." });
+        setUploadStatus({ type: "error", message: data.error || formatText('library.uploadError') });
       }
     } catch (err) {
-      setUploadStatus({ type: "error", message: "Upload failed: backend unreachable." });
+      setUploadStatus({ type: "error", message: formatText('library.uploadFailed') });
     }
     e.target.value = "";
   };
@@ -188,7 +233,7 @@ function App() {
   };
 
   const handleDeleteWorkbook = async (filename) => {
-    if (!confirm(`Delete "${filename}" from the library? This cannot be undone.`)) return;
+    if (!confirm(formatText('library.deleteConfirm', { filename }))) return;
     try {
       const res = await fetch(`${backendUrl}/workbooks/${encodeURIComponent(filename)}`, {
         method: "DELETE",
@@ -245,33 +290,69 @@ function App() {
       {/* Executive Header */}
       <header className="portal-header">
         <div className="header-title-group">
-          <h1>Student Attendance Portal</h1>
-          <p>RFID Attendance System • Hardware Sync{activeFilename ? ` • ${activeFilename}` : ""}</p>
+          <h1>{formatText('header.title')}</h1>
+          <p>{formatText('header.subtitle')}{activeFilename ? ` • ${activeFilename}` : ""}</p>
         </div>
 
         <div className="header-status-bar">
-          <button
-            className={`theme-toggle ${theme === "dark" ? "theme-toggle--dark" : "theme-toggle--light"}`}
-            type="button"
-            onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          >
-            <span className="theme-toggle__thumb" />
-            <span className="theme-toggle__label">
-              {theme === "dark" ? "Dark" : "Light"}
-            </span>
-          </button>
+          <div className="settings-menu-container">
+            <button
+              className="settings-menu-button"
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Settings"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+            
+            {menuOpen && (
+              <div className="settings-dropdown">
+                <div className="dropdown-section">
+                  <span className="dropdown-label">{formatText('menu.theme')}</span>
+                  <div className="dropdown-options">
+                    {['dark', 'light', 'corporate'].map((themeOption) => (
+                      <button
+                        key={themeOption}
+                        className={`dropdown-option ${theme === themeOption ? 'dropdown-option--active' : ''}`}
+                        onClick={() => setTheme(themeOption)}
+                      >
+                        {formatText(`menu.${themeOption}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="dropdown-section">
+                  <span className="dropdown-label">{formatText('menu.language')}</span>
+                  <div className="dropdown-options">
+                    {languages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        className={`dropdown-option ${language === lang.code ? 'dropdown-option--active' : ''}`}
+                        onClick={() => setLanguage(lang.code)}
+                      >
+                        {lang.nativeName}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="clock-display">{currentTime}</div>
 
           <div className="status-chip">
             <span className={`status-indicator ${backendConnected ? "active" : "inactive"}`} />
-            <span>Server: {backendConnected ? "Online" : "Offline"}</span>
+            <span>Server: {backendConnected ? formatText('status.serverOnline') : formatText('status.serverOffline')}</span>
           </div>
 
           <div className="status-chip">
             <span className={`status-indicator ${arduinoStatus.connected ? "active" : "inactive"}`} />
-            <span>Hardware: {arduinoStatus.connected ? `COM Port (${selectedPort})` : "Disconnected"}</span>
+            <span>Hardware: {arduinoStatus.connected ? `${formatText('status.hardwareConnected')} (${selectedPort})` : formatText('status.hardwareDisconnected')}</span>
           </div>
         </div>
       </header>
@@ -279,19 +360,19 @@ function App() {
       {/* Metrics Section */}
       <section className="metrics-row">
         <div className="metric-card">
-          <span className="label">Total Enrolled Students</span>
+          <span className="label">{formatText('metrics.totalEnrolled')}</span>
           <span className="value">{totalEnrolled}</span>
         </div>
 
         <div className="metric-card">
-          <span className="label">Week {currentWeek} Arrival (1st Scan)</span>
+          <span className="label">{formatText('metrics.weekArrival', { week: currentWeek })}</span>
           <span className="value" style={{ color: "#10b981" }}>
             {presentToday}
           </span>
         </div>
 
         <div className="metric-card">
-          <span className="label">Week {currentWeek} Departure (2nd Scan)</span>
+          <span className="label">{formatText('metrics.weekDeparture', { week: currentWeek })}</span>
           <span className="value" style={{ color: "#2563eb" }}>
             {checkedOutToday}
           </span>
@@ -302,7 +383,7 @@ function App() {
       <section className="panel-card">
         <div className="controls-grid">
           <div className="field-group">
-            <label>Academic Week Selection</label>
+            <label>{formatText('controls.weekSelection')}</label>
             <select
               className="form-select"
               value={currentWeek}
@@ -310,14 +391,14 @@ function App() {
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map((w) => (
                 <option key={w} value={w}>
-                  Week {w}
+                  {formatText('week', { week: w })}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="field-group">
-            <label>Arduino Serial Port</label>
+            <label>{formatText('controls.arduinoPort')}</label>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <select
                 className="form-select"
@@ -337,7 +418,7 @@ function App() {
                 disabled={isConnecting || arduinoStatus.connected}
                 style={{ flex: 1 }}
               >
-                {arduinoStatus.connected ? "Hardware Active" : isConnecting ? "Connecting..." : "Connect Arduino"}
+                {arduinoStatus.connected ? formatText('controls.hardwareActive') : isConnecting ? formatText('controls.connecting') : formatText('controls.connectArduino')}
               </button>
             </div>
           </div>
@@ -348,11 +429,11 @@ function App() {
       <section className="panel-card">
         <div className="library-header">
           <div>
-            <h3 className="library-title">📁 Workbook Library</h3>
+            <h3 className="library-title">{formatText('library.title')}</h3>
             <p className="library-subtitle">
               {activeFilename
-                ? `Active: ${activeFilename}`
-                : "No workbook selected — click Load on a file below to activate it"}
+                ? formatText('library.active', { filename: activeFilename })
+                : formatText('library.noWorkbookSelected')}
             </p>
           </div>
           <label className="btn-upload-lib">
@@ -362,7 +443,7 @@ function App() {
               onChange={handleWorkbookUpload}
               style={{ display: "none" }}
             />
-            ＋ Add Workbook
+            {formatText('library.addWorkbook')}
           </label>
         </div>
 
@@ -374,14 +455,12 @@ function App() {
         )}
 
         {workbooks.length === 0 ? (
-          <div className="library-empty">
-            No workbooks in library yet. Click <strong>＋ Add Workbook</strong> to upload your first Excel file.
-          </div>
+          <div className="library-empty" dangerouslySetInnerHTML={{ __html: formatText('library.empty') }} />
         ) : (
           <ul className="workbook-list">
             {workbooks.map((wb) => (
               <li key={wb.filename} className={`workbook-item${wb.active ? " workbook-item--active" : ""}`}>
-                <span className="workbook-icon">{wb.active ? "🟢" : "📄"}</span>
+                <span className="workbook-icon">{wb.active ? "●" : "○"}</span>
                 <span className="workbook-name">{wb.filename}</span>
                 {wb.active && <span className="badge-active">ACTIVE</span>}
                 <div className="workbook-actions">
@@ -390,14 +469,14 @@ function App() {
                       className="btn-lib btn-lib--load"
                       onClick={() => handleSelectWorkbook(wb.filename)}
                     >
-                      Load
+                      {formatText('library.load')}
                     </button>
                   )}
                   <button
                     className="btn-lib btn-lib--delete"
                     onClick={() => handleDeleteWorkbook(wb.filename)}
                   >
-                    Delete
+                    {formatText('library.delete')}
                   </button>
                 </div>
               </li>
@@ -411,16 +490,16 @@ function App() {
         <section className={`alert-banner ${lastScan.status?.toLowerCase() || ""}`}>
           <div className="alert-content">
             <h4>
-              {lastScan.status === "ARRIVAL" && "1st Scan Recorded: Arrival Time Saved to Excel"}
-              {lastScan.status === "DEPARTURE" && "2nd Scan Recorded: Departure Time Saved to Excel"}
-              {lastScan.status === "DUPLICATE" && "3rd Scan Alert: Already Recorded for This Week"}
-              {lastScan.status === "UNKNOWN" && "Access Denied: Unregistered RFID Card"}
-              {lastScan.status === "ERROR" && "System Alert"}
+              {lastScan.status === "ARRIVAL" && formatText('alerts.arrival')}
+              {lastScan.status === "DEPARTURE" && formatText('alerts.departure')}
+              {lastScan.status === "DUPLICATE" && formatText('alerts.duplicate')}
+              {lastScan.status === "UNKNOWN" && formatText('alerts.unknown')}
+              {lastScan.status === "ERROR" && formatText('alerts.error')}
             </h4>
             <p>{lastScan.message}</p>
             {lastScan.student && (
               <p style={{ marginTop: "4px", fontSize: "0.82rem", color: "var(--slate-200)" }}>
-                Student ID: <strong>{lastScan.student.id}</strong> • Name: <strong>{lastScan.student.name}</strong> • RFID UID: <code className="uid-tag">{lastScan.student.uid}</code>
+                {formatText('alerts.studentInfo', { id: lastScan.student.id, name: lastScan.student.name, uid: lastScan.student.uid })}
               </p>
             )}
           </div>
@@ -430,11 +509,11 @@ function App() {
       {/* Excel Attendance Database Register Table */}
       <section className="data-table-wrapper">
         <div className="table-header-bar">
-          <h3>Attendance Register{activeFilename ? ` — ${activeFilename}` : ""}</h3>
+          <h3>{formatText('table.title')}{activeFilename ? ` — ${activeFilename}` : ""}</h3>
           <input
             type="text"
             className="form-input search-box"
-            placeholder="Search by student name, ID, or UID..."
+            placeholder={formatText('table.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -444,14 +523,14 @@ function App() {
           <table className="register-table">
             <thead>
               <tr>
-                <th>Student ID</th>
-                <th>Full Name</th>
-                <th>RFID UID</th>
-                <th>Week {currentWeek} Status</th>
-                <th>1st Scan (Arrival)</th>
-                <th>2nd Scan (Departure)</th>
-                <th>Total Present</th>
-                <th>Attendance Ratio</th>
+                <th>{formatText('table.studentId')}</th>
+                <th>{formatText('table.fullName')}</th>
+                <th>{formatText('table.rfidUid')}</th>
+                <th>{formatText('table.weekStatus', { week: currentWeek })}</th>
+                <th>{formatText('table.firstScan')}</th>
+                <th>{formatText('table.secondScan')}</th>
+                <th>{formatText('table.totalPresent')}</th>
+                <th>{formatText('table.attendanceRatio')}</th>
               </tr>
             </thead>
             <tbody>
@@ -459,8 +538,8 @@ function App() {
                 <tr>
                   <td colSpan="8" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
                     {activeFilename
-                      ? `No student records found. Verify "${activeFilename}" is formatted correctly.`
-                      : "No workbook loaded. Select a workbook from the library above to get started."}
+                      ? formatText('table.noRecords', { filename: activeFilename })
+                      : formatText('table.noWorkbook')}
                   </td>
                 </tr>
               ) : (
@@ -485,7 +564,7 @@ function App() {
                       </td>
                       <td>
                         <span className={isPresent ? "badge-present" : "badge-absent"}>
-                          {isPresent ? "PRESENT" : "ABSENT"}
+                          {isPresent ? formatText('table.present') : formatText('table.absent')}
                         </span>
                       </td>
                       <td style={{ color: weekData.arrival ? "#10b981" : "var(--slate-400)" }}>
