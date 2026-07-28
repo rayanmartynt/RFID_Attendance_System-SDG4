@@ -44,6 +44,8 @@ export const translations = {
       unknown: "Access Denied: Unregistered RFID Card",
       error: "System Alert",
       studentInfo: "Student ID: {id} • Name: {name} • RFID UID: {uid}",
+      noWorkbook: "No workbook loaded. Please load a workbook from the library before scanning cards.",
+      backendNotConnected: "Backend not connected. Please wait for the backend to be connected before scanning cards.",
     },
     table: {
       title: "Attendance Register",
@@ -116,6 +118,8 @@ export const translations = {
       unknown: "Acceso Denegado: Tarjeta RFID No Registrada",
       error: "Alerta del Sistema",
       studentInfo: "ID del Estudiante: {id} • Nombre: {name} • UID RFID: {uid}",
+      noWorkbook: "Ningún libro de trabajo cargado. Cargue un libro de trabajo de la biblioteca antes de escanear tarjetas.",
+      backendNotConnected: "Backend no conectado. Espere a que el backend esté conectado antes de escanear tarjetas.",
     },
     table: {
       title: "Registro de Asistencia",
@@ -188,6 +192,8 @@ export const translations = {
       unknown: "Accès Refusé: Carte RFID Non Enregistrée",
       error: "Alerte Système",
       studentInfo: "ID Étudiant: {id} • Nom: {name} • UID RFID: {uid}",
+      noWorkbook: "Aucun classeur chargé. Chargez un classeur de la bibliothèque avant de scanner les cartes.",
+      backendNotConnected: "Backend non connecté. Attendez que le backend soit connecté avant de scanner les cartes.",
     },
     table: {
       title: "Registre de Présence",
@@ -260,6 +266,8 @@ export const translations = {
       unknown: "تم رفض الوصول: بطاقة RFID غير مسجلة",
       error: "تنبيه النظام",
       studentInfo: "معرف الطالب: {id} • الاسم: {name} • معرف RFID: {uid}",
+      noWorkbook: "لم يتم تحميل مصنف عمل. قم بتحميل مصنف عمل من المكتبة قبل مسح البطاقات.",
+      backendNotConnected: "الخادم غير متصل. انتظر حتى يتم توصيل الخادم قبل مسح البطاقات.",
     },
     table: {
       title: "سجل الحضور",
