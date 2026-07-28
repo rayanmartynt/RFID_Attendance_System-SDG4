@@ -1,5 +1,6 @@
 /* Executive Academic Portal Design System */
 :root {
+  color-scheme: dark;
   --slate-900: #0f172a;
   --slate-800: #1e293b;
   --slate-700: #334155;
@@ -7,6 +8,15 @@
   --slate-400: #94a3b8;
   --slate-200: #e2e8f0;
   --slate-100: #f1f5f9;
+
+  --page-bg: #0f172a;
+  --panel-bg: #1e293b;
+  --panel-border: #334155;
+  --surface-strong: #0f172a;
+  --surface-muted: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
 
   --brand-blue: #2563eb;
   --brand-blue-hover: #1d4ed8;
@@ -18,6 +28,26 @@
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  --slate-900: #f8fafc;
+  --slate-800: #ffffff;
+  --slate-700: #e2e8f0;
+  --slate-600: #cbd5e1;
+  --slate-400: #64748b;
+  --slate-200: #334155;
+  --slate-100: #0f172a;
+
+  --page-bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --panel-border: #e2e8f0;
+  --surface-strong: #f8fafc;
+  --surface-muted: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -26,8 +56,8 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--slate-900);
-  color: var(--slate-100);
+  background-color: var(--page-bg);
+  color: var(--text-primary);
   min-height: 100vh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -44,8 +74,8 @@ body {
 
 /* Header */
 .portal-header {
-  background: var(--slate-800);
-  border: 1px solid var(--slate-700);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   display: flex;
@@ -58,13 +88,13 @@ body {
 .header-title-group h1 {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .header-title-group p {
   font-size: 0.85rem;
-  color: var(--slate-400);
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -78,11 +108,11 @@ body {
   font-family: var(--font-mono);
   font-size: 0.95rem;
   font-weight: 600;
-  background: var(--slate-900);
-  border: 1px solid var(--slate-700);
+  background: var(--surface-strong);
+  border: 1px solid var(--panel-border);
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
-  color: var(--slate-200);
+  color: var(--text-secondary);
 }
 
 .status-chip {
@@ -93,8 +123,62 @@ body {
   font-weight: 600;
   padding: 0.35rem 0.75rem;
   border-radius: 20px;
-  background: var(--slate-900);
-  border: 1px solid var(--slate-700);
+  background: var(--surface-strong);
+  border: 1px solid var(--panel-border);
+}
+
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--panel-border);
+  background: var(--surface-strong);
+  color: var(--text-secondary);
+  padding: 0.22rem 0.3rem 0.22rem 0.32rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 74px;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
+.theme-toggle__thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--brand-blue);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.theme-toggle__label {
+  flex: 1;
+  text-align: center;
+}
+
+.theme-toggle--dark {
+  justify-content: flex-start;
+}
+
+.theme-toggle--dark .theme-toggle__thumb {
+  transform: translateX(0);
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+}
+
+.theme-toggle--light {
+  justify-content: flex-end;
+}
+
+.theme-toggle--light .theme-toggle__thumb {
+  transform: translateX(22px);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
 }
 
 .status-indicator {
@@ -120,8 +204,8 @@ body {
 }
 
 .metric-card {
-  background: var(--slate-800);
-  border: 1px solid var(--slate-700);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   display: flex;
@@ -133,20 +217,20 @@ body {
   font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--slate-400);
+  color: var(--text-muted);
   letter-spacing: 0.04em;
 }
 
 .metric-card .value {
   font-size: 1.6rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 /* Control Panel */
 .panel-card {
-  background: var(--slate-800);
-  border: 1px solid var(--slate-700);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   padding: 1.25rem;
 }
@@ -166,13 +250,13 @@ body {
 .field-group label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--slate-200);
+  color: var(--text-secondary);
 }
 
 .form-select, .form-input {
-  background: var(--slate-900);
-  border: 1px solid var(--slate-700);
-  color: #ffffff;
+  background: var(--surface-strong);
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
   padding: 0.55rem 0.85rem;
   border-radius: 6px;
   font-size: 0.9rem;
@@ -211,8 +295,8 @@ body {
 
 /* Alert Notification Banner */
 .alert-banner {
-  background: var(--slate-800);
-  border: 1px solid var(--slate-700);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-left: 5px solid var(--brand-blue);
   border-radius: 8px;
   padding: 1rem 1.25rem;
@@ -233,21 +317,21 @@ body {
 
 .alert-content p {
   font-size: 0.88rem;
-  color: var(--slate-400);
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 /* Data Table */
 .data-table-wrapper {
-  background: var(--slate-800);
-  border: 1px solid var(--slate-700);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .table-header-bar {
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--slate-700);
+  border-bottom: 1px solid var(--panel-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -258,7 +342,7 @@ body {
 .table-header-bar h3 {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .search-box {
@@ -276,23 +360,23 @@ table.register-table {
 }
 
 table.register-table th {
-  background: var(--slate-900);
+  background: var(--surface-strong);
   padding: 0.75rem 1rem;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--slate-400);
-  border-bottom: 1px solid var(--slate-700);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 table.register-table td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--slate-700);
+  border-bottom: 1px solid var(--panel-border);
   font-size: 0.88rem;
 }
 
 table.register-table tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(37, 99, 235, 0.04);
 }
 
 .badge-present {
@@ -318,11 +402,11 @@ table.register-table tr:hover td {
 .uid-tag {
   font-family: var(--font-mono);
   font-size: 0.82rem;
-  background: var(--slate-900);
+  background: var(--surface-strong);
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  color: var(--slate-200);
-  border: 1px solid var(--slate-700);
+  color: var(--text-secondary);
+  border: 1px solid var(--panel-border);
 }
 
 .pct-bar-container {
@@ -334,7 +418,7 @@ table.register-table tr:hover td {
 .pct-track {
   width: 100px;
   height: 6px;
-  background: var(--slate-900);
+  background: var(--surface-strong);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -343,4 +427,212 @@ table.register-table tr:hover td {
   height: 100%;
   background: var(--brand-blue);
   border-radius: 3px;
+}
+
+/* ── Excel Upload Control ── */
+.excel-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  background: var(--surface-strong);
+  border: 1px dashed var(--slate-600);
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--slate-200);
+  transition: border-color 0.2s ease, background 0.2s ease;
+  width: 100%;
+}
+
+.excel-upload-label:hover {
+  border-color: var(--brand-blue);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--text-primary);
+}
+
+.excel-upload-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.upload-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.4rem 0.7rem;
+  border-radius: 5px;
+  margin-top: 0.1rem;
+}
+
+.upload-status--loading {
+  background: rgba(37, 99, 235, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.upload-status--success {
+  background: rgba(5, 150, 105, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(5, 150, 105, 0.3);
+}
+
+.upload-status--error {
+  background: rgba(225, 29, 72, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(225, 29, 72, 0.3);
+}
+
+.upload-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(147, 197, 253, 0.3);
+  border-top-color: #93c5fd;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Workbook Library Panel ── */
+.library-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.library-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.library-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.btn-upload-lib {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  background: var(--brand-blue);
+  color: #fff;
+  border: none;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-upload-lib:hover {
+  background: var(--brand-blue-hover);
+}
+
+.library-empty {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  border: 1px dashed var(--slate-700);
+  border-radius: 6px;
+}
+
+.workbook-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.workbook-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  transition: border-color 0.15s ease;
+}
+
+.workbook-item:hover {
+  border-color: var(--slate-600);
+}
+
+.workbook-item--active {
+  border-color: var(--brand-emerald);
+  background: rgba(5, 150, 105, 0.06);
+}
+
+.workbook-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.workbook-name {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-active {
+  display: inline-block;
+  padding: 0.18rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(5, 150, 105, 0.18);
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+.workbook-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.btn-lib {
+  border: none;
+  border-radius: 5px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-lib:hover { opacity: 0.85; }
+
+.btn-lib--load {
+  background: var(--brand-blue);
+  color: #fff;
+}
+
+.btn-lib--delete {
+  background: rgba(225, 29, 72, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(225, 29, 72, 0.25);
 }

@@ -5,6 +5,12 @@ import { ReadlineParser } from "@serialport/parser-readline";
 import { Server } from "socket.io";
 import { exec } from "child_process";
 import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+import multer from "multer";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
@@ -19,13 +25,6 @@ const SERIAL_PORT = process.env.SERIAL_PORT || "COM3";
 const BAUDRATE = parseInt(process.env.BAUDRATE || "9600", 10);
 const FLASK_API = process.env.FLASK_API || "http://127.0.0.1:5000";
 
-const SESSIONS = {
-  1: { start: "08:30", end: "11:30" },
-  2: { start: "11:30", end: "14:30" },
-  3: { start: "14:30", end: "17:30" },
-  4: { start: "17:30", end: "20:30" },
-};
-
 let currentWeek = 1;
 let currentSession = 1;
 let arduinoConnected = false;
@@ -36,56 +35,29 @@ let currentPortName = SERIAL_PORT;
 const lastScanTimes = new Map();
 const DEBOUNCE_MS = 3000;
 
-function parseTodayTime(hhmm) {
-  const [hour, minute] = hhmm.split(":").map(Number);
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
-}
+// --- Multer: store uploaded Excel files in the uploads folder ---
+const excelUploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(excelUploadDir)) fs.mkdirSync(excelUploadDir, { recursive: true });
 
-function detectCurrentSession(now = new Date()) {
-  const ids = Object.keys(SESSIONS).map(Number);
-  for (const session of ids) {
-    const { start, end } = SESSIONS[session];
-    const startTime = parseTodayTime(start);
-    const endTime = parseTodayTime(end);
-    const isLast = session === Math.max(...ids);
-    if (isLast) {
-      if (now >= startTime && now <= endTime) return session;
-    } else if (now >= startTime && now < endTime) {
-      return session;
-    }
-  }
-  return null;
-}
+// Tracks the path of the currently active workbook (set on upload)
+let currentExcelPath = null;
 
-function sessionPayload(session) {
-  const { start, end } = SESSIONS[session];
-  return {
-    session,
-    start,
-    end,
-    label: `Session ${session} (${start} – ${end})`,
-  };
-}
-
-function setCurrentSession(session, { broadcast = true } = {}) {
-  if (!SESSIONS[session]) return false;
-  currentSession = session;
-  if (broadcast) {
-    io.emit("session-changed", sessionPayload(currentSession));
-  }
-  return true;
-}
-
-function autoSelectSession() {
-  const active = detectCurrentSession();
-  if (active && active !== currentSession) {
-    console.log(`Auto-selecting session ${active}`);
-    setCurrentSession(active);
-  }
-}
-
-currentSession = detectCurrentSession() || 1;
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, excelUploadDir),
+  // Preserve the lecturer's original filename
+  filename: (_req, file, cb) => cb(null, file.originalname),
+});
+const upload = multer({
+  storage,
+  fileFilter: (_req, file, cb) => {
+    const ok =
+      file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      file.mimetype === "application/vnd.ms-excel" ||
+      file.originalname.endsWith(".xlsx") ||
+      file.originalname.endsWith(".xls");
+    cb(null, ok);
+  },
+});
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -116,10 +88,66 @@ app.post("/set-week", (req, res) => {
 
 app.post("/set-session", (req, res) => {
   const session = Number(req.body?.session);
-  if (!setCurrentSession(session)) {
+  if (session < 1 || session > 4) {
     return res.status(400).json({ error: "Session must be 1-4" });
   }
-  res.json(sessionPayload(currentSession));
+  currentSession = session;
+  io.emit("session-changed", { session: currentSession });
+  res.json({ session: currentSession });
+});
+
+// --- Workbook Library routes ---
+
+// List all workbooks in the uploads folder
+app.get("/workbooks", (req, res) => {
+  try {
+    const files = fs.readdirSync(excelUploadDir).filter((f) =>
+      f.endsWith(".xlsx") || f.endsWith(".xls")
+    );
+    const activeFilename = currentExcelPath ? path.basename(currentExcelPath) : null;
+    res.json({
+      files: files.map((f) => ({ filename: f, active: f === activeFilename })),
+      activeFilename,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to list workbooks", details: err.message });
+  }
+});
+
+// Upload a new workbook into the library (does NOT auto-activate it)
+app.post("/workbooks/upload", upload.single("workbook"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No Excel file received. Please upload a .xlsx or .xls file." });
+  }
+  console.log(`Workbook added to library: ${req.file.path}`);
+  res.json({ success: true, filename: req.file.originalname });
+});
+
+// Set a workbook as the active one
+app.post("/workbooks/select", (req, res) => {
+  const { filename } = req.body;
+  if (!filename) return res.status(400).json({ error: "filename is required" });
+  const targetPath = path.join(excelUploadDir, filename);
+  if (!fs.existsSync(targetPath)) {
+    return res.status(404).json({ error: `File "${filename}" not found in workbook library.` });
+  }
+  currentExcelPath = targetPath;
+  console.log(`Active workbook set to: ${currentExcelPath}`);
+  res.json({ success: true, activeFilename: filename });
+});
+
+// Delete a workbook from the library
+app.delete("/workbooks/:filename", (req, res) => {
+  const filename = decodeURIComponent(req.params.filename);
+  const targetPath = path.join(excelUploadDir, filename);
+  if (!fs.existsSync(targetPath)) {
+    return res.status(404).json({ error: `File "${filename}" not found.` });
+  }
+  fs.rmSync(targetPath);
+  // Clear active path if the deleted file was active
+  if (currentExcelPath === targetPath) currentExcelPath = null;
+  console.log(`Workbook deleted: ${filename}`);
+  res.json({ success: true, deleted: filename });
 });
 
 app.get("/attendance", async (req, res) => {
@@ -133,8 +161,16 @@ app.get("/attendance", async (req, res) => {
     console.warn("Flask API unreachable for /attendance, falling back to direct Excel read");
   }
 
-  // Fallback to direct Python read of Attendance.xlsx if Flask server is not running
-  const pyCmd = `python -c "import pandas as pd, json, os; file=os.path.join('..','Python','Attendance.xlsx'); df=pd.read_excel(file); print(json.dumps(df.fillna('').to_dict(orient='records')))"`;
+  // Fallback: read the lecturer's uploaded workbook directly with Python
+  if (!currentExcelPath) {
+    return res.status(503).json({
+      error: "No workbook loaded",
+      details: "Please upload your Excel attendance file using the upload button.",
+    });
+  }
+
+  const safePath = currentExcelPath.replace(/\\/g, "/");
+  const pyCmd = `python -c "import pandas as pd, json; df=pd.read_excel(r'${safePath}'); print(json.dumps(df.fillna('').to_dict(orient='records')))"`;
   exec(pyCmd, { cwd: process.cwd() }, (error, stdout) => {
     if (error) {
       return res.status(500).json({ error: "Failed to read Excel file", details: error.message });
@@ -179,7 +215,15 @@ app.get("/students", async (req, res) => {
     console.warn("Flask API unreachable for /students, falling back to direct Excel read");
   }
 
-  const pyCmd = `python -c "import pandas as pd, json, os; file=os.path.join('..','Python','Attendance.xlsx'); df=pd.read_excel(file); print(json.dumps(df[['Student_ID','Name','RFID_UID']].fillna('').to_dict(orient='records')))"`;
+  if (!currentExcelPath) {
+    return res.status(503).json({
+      error: "No workbook loaded",
+      details: "Please upload your Excel attendance file first.",
+    });
+  }
+
+  const safePath = currentExcelPath.replace(/\\/g, "/");
+  const pyCmd = `python -c "import pandas as pd, json; df=pd.read_excel(r'${safePath}'); print(json.dumps(df[['Student_ID','Name','RFID_UID']].fillna('').to_dict(orient='records')))"`;
   exec(pyCmd, { cwd: process.cwd() }, (error, stdout) => {
     if (error) return res.status(500).json({ error: "Failed to load students" });
     try {
@@ -230,7 +274,7 @@ io.on("connection", (socket) => {
   console.log("Web client connected:", socket.id);
   // Send current state to newly connected/refreshed page immediately
   socket.emit("week-changed", { week: currentWeek });
-  socket.emit("session-changed", sessionPayload(currentSession));
+  socket.emit("session-changed", { session: currentSession });
   socket.emit("arduino-status", {
     connected: arduinoConnected,
     message: arduinoMessage,
@@ -243,11 +287,6 @@ io.on("connection", (socket) => {
       currentWeek = week;
       io.emit("week-changed", { week: currentWeek });
     }
-  });
-
-  socket.on("set-session", (data) => {
-    const session = Number(data?.session);
-    setCurrentSession(session);
   });
 });
 
@@ -417,8 +456,7 @@ function setupSerialPort(portPath = currentPortName) {
 
 setupSerialPort();
 
-setInterval(autoSelectSession, 30_000);
-autoSelectSession();
+
 
 console.log(`Using Flask API at ${FLASK_API}`);
 server.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));

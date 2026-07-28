@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const SESSIONS = [
-  { id: 1, start: "08:30", end: "11:30" },
-  { id: 2, start: "11:30", end: "14:30" },
-  { id: 3, start: "14:30", end: "17:30" },
-  { id: 4, start: "17:30", end: "20:30" },
-];
 
 function App() {
   // Load state from localStorage so refreshing the page never resets controls
   const [currentWeek, setCurrentWeek] = useState(() => {
     return Number(localStorage.getItem("rfid_week")) || 1;
   });
-  const [currentSession, setCurrentSession] = useState(() => {
-    return Number(localStorage.getItem("rfid_session")) || 1;
-  });
   const [selectedPort, setSelectedPort] = useState(() => {
     return localStorage.getItem("rfid_port") || "COM3";
+  });
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") return "dark";
+    const savedTheme = localStorage.getItem("rfid_theme");
+    if (savedTheme) return savedTheme;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
   const [availablePorts, setAvailablePorts] = useState(["COM3", "COM4", "COM5"]);
@@ -29,6 +26,9 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [socket, setSocket] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState(null); // { type: 'success'|'error'|'loading', message }
+  const [workbooks, setWorkbooks] = useState([]); // [{ filename, active }]
+  const [activeFilename, setActiveFilename] = useState(null);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
@@ -38,12 +38,13 @@ function App() {
   }, [currentWeek]);
 
   useEffect(() => {
-    localStorage.setItem("rfid_session", currentSession);
-  }, [currentSession]);
-
-  useEffect(() => {
     localStorage.setItem("rfid_port", selectedPort);
   }, [selectedPort]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("rfid_theme", theme);
+  }, [theme]);
 
   // Live Clock
   useEffect(() => {
@@ -83,9 +84,24 @@ function App() {
     }
   };
 
+  // Fetch workbook library
+  const fetchWorkbooks = async () => {
+    try {
+      const res = await fetch(`${backendUrl}/workbooks`);
+      if (res.ok) {
+        const data = await res.json();
+        setWorkbooks(data.files || []);
+        setActiveFilename(data.activeFilename || null);
+      }
+    } catch (err) {
+      console.warn("Error fetching workbook library:", err.message);
+    }
+  };
+
   useEffect(() => {
     fetchAttendance();
     fetchPorts();
+    fetchWorkbooks();
     const interval = setInterval(fetchAttendance, 3000);
     return () => clearInterval(interval);
   }, [backendUrl]);
@@ -118,10 +134,6 @@ function App() {
       if (data?.week) setCurrentWeek(data.week);
     });
 
-    newSocket.on("session-changed", (data) => {
-      if (data?.session) setCurrentSession(data.session);
-    });
-
     setSocket(newSocket);
     return () => newSocket.disconnect();
   }, [backendUrl]);
@@ -131,9 +143,66 @@ function App() {
     if (socket) socket.emit("set-week", { week });
   };
 
-  const handleSessionChange = (session) => {
-    setCurrentSession(session);
-    if (socket) socket.emit("set-session", { session });
+  const handleWorkbookUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadStatus({ type: "loading", message: `Uploading "${file.name}"...` });
+    const formData = new FormData();
+    formData.append("workbook", file);
+    try {
+      const res = await fetch(`${backendUrl}/workbooks/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUploadStatus({ type: "success", message: `"${file.name}" added to library.` });
+        fetchWorkbooks();
+        setTimeout(() => setUploadStatus(null), 5000);
+      } else {
+        setUploadStatus({ type: "error", message: data.error || "Upload failed." });
+      }
+    } catch (err) {
+      setUploadStatus({ type: "error", message: "Upload failed: backend unreachable." });
+    }
+    e.target.value = "";
+  };
+
+  const handleSelectWorkbook = async (filename) => {
+    try {
+      const res = await fetch(`${backendUrl}/workbooks/select`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename }),
+      });
+      if (res.ok) {
+        setActiveFilename(filename);
+        setWorkbooks((prev) =>
+          prev.map((w) => ({ ...w, active: w.filename === filename }))
+        );
+        fetchAttendance();
+      }
+    } catch (err) {
+      console.warn("Error selecting workbook:", err.message);
+    }
+  };
+
+  const handleDeleteWorkbook = async (filename) => {
+    if (!confirm(`Delete "${filename}" from the library? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${backendUrl}/workbooks/${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchWorkbooks();
+        if (activeFilename === filename) {
+          setActiveFilename(null);
+          setAttendanceData([]);
+        }
+      }
+    } catch (err) {
+      console.warn("Error deleting workbook:", err.message);
+    }
   };
 
   const connectArduino = async () => {
@@ -177,10 +246,22 @@ function App() {
       <header className="portal-header">
         <div className="header-title-group">
           <h1>Student Attendance Portal</h1>
-          <p>Microsoft Excel Attendance Database (`Attendance.xlsx`) • Hardware RFID Sync</p>
+          <p>RFID Attendance System • Hardware Sync{activeFilename ? ` • ${activeFilename}` : ""}</p>
         </div>
 
         <div className="header-status-bar">
+          <button
+            className={`theme-toggle ${theme === "dark" ? "theme-toggle--dark" : "theme-toggle--light"}`}
+            type="button"
+            onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            <span className="theme-toggle__thumb" />
+            <span className="theme-toggle__label">
+              {theme === "dark" ? "Dark" : "Light"}
+            </span>
+          </button>
+
           <div className="clock-display">{currentTime}</div>
 
           <div className="status-chip">
@@ -236,21 +317,6 @@ function App() {
           </div>
 
           <div className="field-group">
-            <label>Lecture Session Window</label>
-            <select
-              className="form-select"
-              value={currentSession}
-              onChange={(e) => handleSessionChange(Number(e.target.value))}
-            >
-              {SESSIONS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  Session {s.id} ({s.start} – {s.end})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field-group">
             <label>Arduino Serial Port</label>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <select
@@ -278,6 +344,68 @@ function App() {
         </div>
       </section>
 
+      {/* Workbook Library */}
+      <section className="panel-card">
+        <div className="library-header">
+          <div>
+            <h3 className="library-title">📁 Workbook Library</h3>
+            <p className="library-subtitle">
+              {activeFilename
+                ? `Active: ${activeFilename}`
+                : "No workbook selected — click Load on a file below to activate it"}
+            </p>
+          </div>
+          <label className="btn-upload-lib">
+            <input
+              type="file"
+              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              onChange={handleWorkbookUpload}
+              style={{ display: "none" }}
+            />
+            ＋ Add Workbook
+          </label>
+        </div>
+
+        {uploadStatus && (
+          <div className={`upload-status upload-status--${uploadStatus.type}`} style={{ marginBottom: "0.75rem" }}>
+            {uploadStatus.type === "loading" && <span className="upload-spinner" />}
+            {uploadStatus.message}
+          </div>
+        )}
+
+        {workbooks.length === 0 ? (
+          <div className="library-empty">
+            No workbooks in library yet. Click <strong>＋ Add Workbook</strong> to upload your first Excel file.
+          </div>
+        ) : (
+          <ul className="workbook-list">
+            {workbooks.map((wb) => (
+              <li key={wb.filename} className={`workbook-item${wb.active ? " workbook-item--active" : ""}`}>
+                <span className="workbook-icon">{wb.active ? "🟢" : "📄"}</span>
+                <span className="workbook-name">{wb.filename}</span>
+                {wb.active && <span className="badge-active">ACTIVE</span>}
+                <div className="workbook-actions">
+                  {!wb.active && (
+                    <button
+                      className="btn-lib btn-lib--load"
+                      onClick={() => handleSelectWorkbook(wb.filename)}
+                    >
+                      Load
+                    </button>
+                  )}
+                  <button
+                    className="btn-lib btn-lib--delete"
+                    onClick={() => handleDeleteWorkbook(wb.filename)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* Live Scan Result Banner */}
       {lastScan && (
         <section className={`alert-banner ${lastScan.status?.toLowerCase() || ""}`}>
@@ -302,7 +430,7 @@ function App() {
       {/* Excel Attendance Database Register Table */}
       <section className="data-table-wrapper">
         <div className="table-header-bar">
-          <h3>Attendance Register Database (`Attendance.xlsx`)</h3>
+          <h3>Attendance Register{activeFilename ? ` — ${activeFilename}` : ""}</h3>
           <input
             type="text"
             className="form-input search-box"
@@ -330,7 +458,9 @@ function App() {
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan="8" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
-                    No student records found. Check that `Attendance.xlsx` exists and is formatted correctly.
+                    {activeFilename
+                      ? `No student records found. Verify "${activeFilename}" is formatted correctly.`
+                      : "No workbook loaded. Select a workbook from the library above to get started."}
                   </td>
                 </tr>
               ) : (
