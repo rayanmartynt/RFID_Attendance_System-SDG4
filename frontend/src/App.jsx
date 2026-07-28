@@ -34,6 +34,7 @@ function App() {
   const [uploadStatus, setUploadStatus] = useState(null); // { type: 'success'|'error'|'loading', message }
   const [workbooks, setWorkbooks] = useState([]); // [{ filename, active }]
   const [activeFilename, setActiveFilename] = useState(null);
+  const [toast, setToast] = useState(null); // { id, message, type: 'confirm'|'success'|'error', onConfirm, onCancel }
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
@@ -233,21 +234,41 @@ function App() {
   };
 
   const handleDeleteWorkbook = async (filename) => {
-    if (!confirm(formatText('library.deleteConfirm', { filename }))) return;
-    try {
-      const res = await fetch(`${backendUrl}/workbooks/${encodeURIComponent(filename)}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        fetchWorkbooks();
-        if (activeFilename === filename) {
-          setActiveFilename(null);
-          setAttendanceData([]);
+    setToast({
+      id: Date.now(),
+      message: formatText('library.deleteConfirm', { filename }),
+      type: 'confirm',
+      onConfirm: async () => {
+        setToast(null);
+        try {
+          const res = await fetch(`${backendUrl}/workbooks/${encodeURIComponent(filename)}`, {
+            method: "DELETE",
+          });
+          if (res.ok) {
+            fetchWorkbooks();
+            if (activeFilename === filename) {
+              setActiveFilename(null);
+              setAttendanceData([]);
+            }
+            setToast({
+              id: Date.now(),
+              message: `"${filename}" deleted successfully`,
+              type: 'success',
+            });
+            setTimeout(() => setToast(null), 3000);
+          }
+        } catch (err) {
+          console.warn("Error deleting workbook:", err.message);
+          setToast({
+            id: Date.now(),
+            message: "Failed to delete workbook",
+            type: 'error',
+          });
+          setTimeout(() => setToast(null), 3000);
         }
-      }
-    } catch (err) {
-      console.warn("Error deleting workbook:", err.message);
-    }
+      },
+      onCancel: () => setToast(null),
+    });
   };
 
   const connectArduino = async () => {
@@ -494,9 +515,24 @@ function App() {
               {lastScan.status === "DEPARTURE" && formatText('alerts.departure')}
               {lastScan.status === "DUPLICATE" && formatText('alerts.duplicate')}
               {lastScan.status === "UNKNOWN" && formatText('alerts.unknown')}
-              {lastScan.status === "ERROR" && formatText('alerts.error')}
+              {lastScan.status === "ERROR" && (
+                lastScan.message.includes("No workbook loaded") 
+                  ? formatText('alerts.noWorkbook')
+                  : lastScan.message.includes("Backend not connected")
+                    ? formatText('alerts.backendNotConnected')
+                    : formatText('alerts.error')
+              )}
             </h4>
-            <p>{lastScan.message}</p>
+            <p>
+              {lastScan.status === "ERROR" && (
+                lastScan.message.includes("No workbook loaded") 
+                  ? formatText('alerts.noWorkbook')
+                  : lastScan.message.includes("Backend not connected")
+                    ? formatText('alerts.backendNotConnected')
+                    : lastScan.message
+              )}
+              {lastScan.status !== "ERROR" && lastScan.message}
+            </p>
             {lastScan.student && (
               <p style={{ marginTop: "4px", fontSize: "0.82rem", color: "var(--slate-200)" }}>
                 {formatText('alerts.studentInfo', { id: lastScan.student.id, name: lastScan.student.name, uid: lastScan.student.uid })}
@@ -507,96 +543,124 @@ function App() {
       )}
 
       {/* Excel Attendance Database Register Table */}
-      <section className="data-table-wrapper">
-        <div className="table-header-bar">
-          <h3>{formatText('table.title')}{activeFilename ? ` — ${activeFilename}` : ""}</h3>
-          <input
-            type="text"
-            className="form-input search-box"
-            placeholder={formatText('table.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+      {activeFilename && (
+        <section className="data-table-wrapper">
+          <div className="table-header-bar">
+            <h3>{formatText('table.title')} — {activeFilename}</h3>
+            <input
+              type="text"
+              className="form-input search-box"
+              placeholder={formatText('table.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
 
-        <div className="table-scroll">
-          <table className="register-table">
-            <thead>
-              <tr>
-                <th>{formatText('table.studentId')}</th>
-                <th>{formatText('table.fullName')}</th>
-                <th>{formatText('table.rfidUid')}</th>
-                <th>{formatText('table.weekStatus', { week: currentWeek })}</th>
-                <th>{formatText('table.firstScan')}</th>
-                <th>{formatText('table.secondScan')}</th>
-                <th>{formatText('table.totalPresent')}</th>
-                <th>{formatText('table.attendanceRatio')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.length === 0 ? (
+          <div className="table-scroll">
+            <table className="register-table">
+              <thead>
                 <tr>
-                  <td colSpan="8" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
-                    {activeFilename
-                      ? formatText('table.noRecords', { filename: activeFilename })
-                      : formatText('table.noWorkbook')}
-                  </td>
+                  <th>{formatText('table.studentId')}</th>
+                  <th>{formatText('table.fullName')}</th>
+                  <th>{formatText('table.rfidUid')}</th>
+                  <th>{formatText('table.weekStatus', { week: currentWeek })}</th>
+                  <th>{formatText('table.firstScan')}</th>
+                  <th>{formatText('table.secondScan')}</th>
+                  <th>{formatText('table.totalPresent')}</th>
+                  <th>{formatText('table.attendanceRatio')}</th>
                 </tr>
-              ) : (
-                filteredStudents.map((st) => {
-                  const weekData = st.weeks?.[weekKey] || {};
-                  const isPresent = weekData.status === 1;
-                  const isHighlighted = lastScan?.student?.id === st.id;
+              </thead>
+              <tbody>
+                {filteredStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
+                      {formatText('table.noRecords', { filename: activeFilename })}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStudents.map((st) => {
+                    const weekData = st.weeks?.[weekKey] || {};
+                    const isPresent = weekData.status === 1;
+                    const isHighlighted = lastScan?.student?.id === st.id;
 
-                  return (
-                    <tr
-                      key={st.id}
-                      style={
-                        isHighlighted
-                          ? { backgroundColor: "rgba(37, 99, 235, 0.15)", transition: "background 0.3s ease" }
-                          : {}
-                      }
-                    >
-                      <td style={{ fontWeight: "600" }}>{st.id}</td>
-                      <td style={{ fontWeight: "600" }}>{st.name}</td>
-                      <td>
-                        <span className="uid-tag">{st.uid}</span>
-                      </td>
-                      <td>
-                        <span className={isPresent ? "badge-present" : "badge-absent"}>
-                          {isPresent ? formatText('table.present') : formatText('table.absent')}
-                        </span>
-                      </td>
-                      <td style={{ color: weekData.arrival ? "#10b981" : "var(--slate-400)" }}>
-                        {weekData.arrival || "—"}
-                      </td>
-                      <td style={{ color: weekData.departure ? "#2563eb" : "var(--slate-400)" }}>
-                        {weekData.departure || "—"}
-                      </td>
-                      <td style={{ fontWeight: "600", fontFamily: "var(--font-mono)" }}>
-                        {st.total_present} / 12
-                      </td>
-                      <td>
-                        <div className="pct-bar-container">
-                          <div className="pct-track">
-                            <div
-                              className="pct-fill"
-                              style={{ width: `${Math.min(st.attendance_pct || 0, 100)}%` }}
-                            />
-                          </div>
-                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>
-                            {st.attendance_pct}%
+                    return (
+                      <tr
+                        key={st.id}
+                        style={
+                          isHighlighted
+                            ? { backgroundColor: "rgba(37, 99, 235, 0.15)", transition: "background 0.3s ease" }
+                            : {}
+                        }
+                      >
+                        <td style={{ fontWeight: "600" }}>{st.id}</td>
+                        <td style={{ fontWeight: "600" }}>{st.name}</td>
+                        <td>
+                          <span className="uid-tag">{st.uid}</span>
+                        </td>
+                        <td>
+                          <span className={isPresent ? "badge-present" : "badge-absent"}>
+                            {isPresent ? formatText('table.present') : formatText('table.absent')}
                           </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        </td>
+                        <td style={{ color: weekData.arrival ? "#10b981" : "var(--slate-400)" }}>
+                          {weekData.arrival || "—"}
+                        </td>
+                        <td style={{ color: weekData.departure ? "#2563eb" : "var(--slate-400)" }}>
+                          {weekData.departure || "—"}
+                        </td>
+                        <td style={{ fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                          {st.total_present} / 12
+                        </td>
+                        <td>
+                          <div className="pct-bar-container">
+                            <div className="pct-track">
+                              <div
+                                className="pct-fill"
+                                style={{ width: `${Math.min(st.attendance_pct || 0, 100)}%` }}
+                              />
+                            </div>
+                            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>
+                              {st.attendance_pct}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      
+      {/* Toast Notification */}
+      {toast && (
+        <>
+          <div className="toast-backdrop" onClick={toast.onCancel} />
+          <div className={`toast toast--${toast.type}`}>
+            <div className="toast-content">
+              <p>{toast.message}</p>
+              {toast.type === 'confirm' && (
+                <div className="toast-actions">
+                  <button 
+                    className="toast-btn toast-btn--cancel"
+                    onClick={toast.onCancel}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="toast-btn toast-btn--confirm"
+                    onClick={toast.onConfirm}
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -374,6 +374,18 @@ async function processScan(rawUid, { strict = false } = {}) {
   }
   lastScanTimes.set(uid, now);
 
+  // Check if workbook is loaded
+  if (!currentExcelPath) {
+    console.warn("Scan rejected: No workbook loaded");
+    sendToArduino("NOTFOUND");
+    const errorPayload = { 
+      status: "ERROR", 
+      message: "No workbook loaded. Please load a workbook from the library before scanning cards." 
+    };
+    io.emit("scan-result", errorPayload);
+    return errorPayload;
+  }
+
   autoSelectSession();
   try {
     const response = await fetch(`${FLASK_API}/scan`, {
@@ -412,7 +424,10 @@ async function processScan(rawUid, { strict = false } = {}) {
   } catch (err) {
     console.error("Error processing scan via Flask API:", err.message);
     sendToArduino("NOTFOUND");
-    const errorPayload = { status: "ERROR", message: err.message };
+    const errorPayload = { 
+      status: "ERROR", 
+      message: "Backend not connected. Please wait for the backend to be connected before scanning cards." 
+    };
     io.emit("scan-result", errorPayload);
     return errorPayload;
   }
